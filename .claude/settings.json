@@ -1,0 +1,25 @@
+{
+  "extraKnownMarketplaces": {
+    "nx-claude-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "nrwl/nx-ai-agents-config"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "nx@nx-claude-plugins": true
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" && CHANGES=$(git status --porcelain 2>/dev/null) && if [ -n \"$CHANGES\" ]; then COUNT=$(echo \"$CHANGES\" | wc -l | tr -d ' '); echo \"\n--- Commit suggere ($COUNT fichier(s) modifie(s)) ---\nFormat : feat|fix|chore|docs(scope): description\nEx    : feat(api): ajouter module Portfolio avec CRUD Prisma\n\nFichiers :\n$(git status --short 2>/dev/null)\n---------------------------------------------------\"; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

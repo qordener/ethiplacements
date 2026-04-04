@@ -1,0 +1,82 @@
+// Learn more about Prisma schema: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum AssetType {
+  STOCK
+  ETF
+  BOND
+  CRYPTO
+  OTHER
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Portfolio {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  holdings    Holding[]
+}
+
+model Asset {
+  id        String     @id @default(cuid())
+  name      String
+  ticker    String     @unique
+  isin      String?
+  type      AssetType
+  sector    String?
+  holdings  Holding[]
+  esgScores EsgScore[]
+}
+
+model Holding {
+  id           String        @id @default(cuid())
+  portfolioId  String
+  assetId      String
+  quantity     Float
+  averagePrice Float
+  portfolio    Portfolio     @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset        Asset         @relation(fields: [assetId], references: [id])
+  transactions Transaction[]
+
+  @@unique([portfolioId, assetId])
+}
+
+model Transaction {
+  id        String          @id @default(cuid())
+  holdingId String
+  type      TransactionType
+  quantity  Float
+  price     Float
+  date      DateTime
+  notes     String?
+  createdAt DateTime        @default(now())
+  holding   Holding         @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+}
+
+model EsgScore {
+  id       String   @id @default(cuid())
+  assetId  String
+  score    Float    // 0 à 100
+  provider String   // ex: "manual", "MSCI", "Sustainalytics"
+  date     DateTime @default(now())
+  details  String?  // JSON sérialisé avec le détail par critère (E, S, G)
+  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+}
