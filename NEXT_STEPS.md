@@ -31,6 +31,7 @@
 - [x] Premier commit poussé (147 fichiers, `chore(init)`)
 - [x] `.gitignore` complet (DB SQLite, Prisma generated, logs)
 - [x] Hook commit automatique configuré (Stop hook dans `.claude/settings.json`)
+- [x] README.md rédigé (objectif, installation, usage, endpoints, labels ESG)
 - [ ] CI/CD validé (`.github/workflows/ci.yml` committé, non encore testé)
 
 ### MCPs à connecter au démarrage du projet
