@@ -60,6 +60,24 @@
         }
       }
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/apps/api"],
+      "options": {
+        "command": "npx vitest run",
+        "cwd": "{projectRoot}"
+      },
+      "configurations": {
+        "watch": {
+          "command": "npx vitest",
+          "cwd": "{projectRoot}"
+        },
+        "coverage": {
+          "command": "npx vitest run --coverage",
+          "cwd": "{projectRoot}"
+        }
+      }
+    },
     "prisma-generate": {
       "executor": "nx:run-commands",
       "options": {
