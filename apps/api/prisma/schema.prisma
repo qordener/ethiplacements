@@ -22,6 +22,7 @@ enum AssetType {
 enum TransactionType {
   BUY
   SELL
+  DIVIDEND
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -36,14 +37,16 @@ model Portfolio {
 }
 
 model Asset {
-  id        String     @id @default(cuid())
-  name      String
-  ticker    String     @unique
-  isin      String?
-  type      AssetType
-  sector    String?
-  holdings  Holding[]
-  esgScores EsgScore[]
+  id               String     @id @default(cuid())
+  name             String
+  ticker           String     @unique
+  isin             String?
+  type             AssetType
+  sector           String?
+  manualPrice      Float?
+  manualPriceDate  DateTime?
+  holdings         Holding[]
+  esgScores        EsgScore[]
 }
 
 model Holding {

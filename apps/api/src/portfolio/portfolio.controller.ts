@@ -44,4 +44,9 @@ export class PortfolioController {
   remove(@Param('id') id: string) {
     return this.portfolioService.remove(id);
   }
+
+  @Get(':id/summary')
+  getSummary(@Param('id') id: string) {
+    return this.portfolioService.getSummary(id);
+  }
 }
