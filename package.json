@@ -46,11 +46,6 @@
     "vitest": "^4.0.8",
     "webpack-cli": "^5.1.4"
   },
-  "workspaces": [
-    "packages/*",
-    "apps/api",
-    "apps/api-e2e"
-  ],
   "dependencies": {
     "@angular/common": "~21.2.0",
     "@angular/compiler": "~21.2.0",
