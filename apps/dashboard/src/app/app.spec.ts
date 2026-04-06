@@ -1,22 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
-import { NxWelcome } from './nx-welcome';
-import { RouterModule } from '@angular/router';
+import { provideRouter } from '@angular/router';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RouterModule.forRoot([])],
-      declarations: [App, NxWelcome],
+      imports: [App],
+      providers: [provideRouter([])],
     }).compileComponents();
   });
 
-  it('should render title', async () => {
+  it('should create the app', () => {
     const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain(
-      'Welcome dashboard'
-    );
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

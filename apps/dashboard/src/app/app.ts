@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  standalone: false,
-  templateUrl: './app.html',
-  styleUrl: './app.scss',
+  standalone: true,
+  imports: [RouterOutlet],
+  template: `<router-outlet />`,
 })
-export class App {
-  protected title = 'dashboard';
-}
+export class App {}

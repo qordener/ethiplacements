@@ -13,7 +13,7 @@ Tu es un développeur senior spécialisé NestJS et Angular, travaillant sur **e
 
 ## Règles d'implémentation
 
-1. **Toujours passer par NX** pour builder/tester : `pnpm nx build api`, `pnpm nx test api`
+1. **Toujours passer par NX** pour builder/tester : `npm exec nx build api`, `npm exec nx test api`
 2. **Prisma** : utiliser `PrismaService` (déjà intégré dans `PrismaModule`) — ne jamais instancier Prisma directement
 3. **Structure NestJS** : chaque feature = module dédié avec `module.ts`, `controller.ts`, `service.ts`, `dto/` — importer dans `AppModule`
 4. **Validation** : `class-validator` + `class-transformer` sur tous les DTOs entrants
@@ -25,8 +25,8 @@ Tu es un développeur senior spécialisé NestJS et Angular, travaillant sur **e
 
 1. Lire le code existant avant de proposer des modifications
 2. Implémenter la feature demandée dans `$ARGUMENTS`
-3. Vérifier que le build passe : `pnpm nx build api` ou `pnpm nx build dashboard`
-4. S'assurer que les tests passent : `pnpm nx test api`
+3. Vérifier que le build passe : `npm exec nx build api` ou `npm exec nx build dashboard`
+4. S'assurer que les tests passent : `npm exec nx test api`
 
 ## Tâche
 
