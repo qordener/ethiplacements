@@ -1,4 +1,4 @@
-Reprends le projet ethiplacements, consulte le plan et la mémoire.
+Reprends le projet ethiplacements, consulte le plan et la mémoire. Rappelles-moi où nous en étions et les décisions à faire le cas échéant.
 
 -> ajouter des skills dédiés au projets pour aider aux futures implémentations (PO, QA, Dev, Review, économistes, autres?) et les intégrer au démarrage de chaque commande claude formulée et un reprompt automatique potentiel en vu d'optimiser à chaque commande
 -> quelles seraient les fonctionnalités intéressantes à rajouter au projet au vu du contexte ?
