@@ -6,7 +6,7 @@ describe('PortfolioCard', () => {
   let component: PortfolioCard;
 
   async function setup(overrides: {
-    id?: number;
+    id?: string;
     name?: string;
     description?: string | null;
     totalValue?: number;
@@ -20,7 +20,7 @@ describe('PortfolioCard', () => {
     fixture = TestBed.createComponent(PortfolioCard);
     component = fixture.componentInstance;
 
-    fixture.componentRef.setInput('id', overrides.id ?? 1);
+    fixture.componentRef.setInput('id', overrides.id ?? 'cuid-1');
     fixture.componentRef.setInput('name', overrides.name ?? 'Mon Portefeuille');
     fixture.componentRef.setInput('description', overrides.description !== undefined ? overrides.description : 'Un portefeuille éthique');
     fixture.componentRef.setInput('totalValue', overrides.totalValue ?? 10000);
@@ -150,23 +150,23 @@ describe('PortfolioCard', () => {
 
   describe('événement cardClick', () => {
     it('should emit cardClick with portfolio id when card is clicked', async () => {
-      await setup({ id: 42 });
-      const emitted: number[] = [];
-      component.cardClick.subscribe((id: number) => emitted.push(id));
+      await setup({ id: 'cuid-42' });
+      const emitted: string[] = [];
+      component.cardClick.subscribe((id: string) => emitted.push(id));
 
       const card = fixture.nativeElement.querySelector('[data-testid="portfolio-card"]');
       card.click();
 
-      expect(emitted).toEqual([42]);
+      expect(emitted).toEqual(['cuid-42']);
     });
 
     it('should emit cardClick with correct id for different portfolio', async () => {
-      await setup({ id: 7 });
-      const emitted: number[] = [];
-      component.cardClick.subscribe((id: number) => emitted.push(id));
+      await setup({ id: 'cuid-7' });
+      const emitted: string[] = [];
+      component.cardClick.subscribe((id: string) => emitted.push(id));
 
       fixture.nativeElement.querySelector('[data-testid="portfolio-card"]').click();
-      expect(emitted[0]).toBe(7);
+      expect(emitted[0]).toBe('cuid-7');
     });
   });
 

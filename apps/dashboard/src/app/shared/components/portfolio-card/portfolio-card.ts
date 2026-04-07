@@ -96,14 +96,14 @@ export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutra
   `],
 })
 export class PortfolioCard {
-  id = input.required<number>();
+  id = input.required<string>();
   name = input.required<string>();
   description = input.required<string | null>();
   totalValue = input.required<number>();
   changePercent = input.required<number>();
   esgScore = input.required<number | null>();
 
-  cardClick = output<number>();
+  cardClick = output<string>();
 
   changeClass = computed<ChangeClass>(() => {
     const c = this.changePercent();
