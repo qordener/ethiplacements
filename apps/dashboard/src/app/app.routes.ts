@@ -7,4 +7,11 @@ export const appRoutes: Route[] = [
     loadComponent: () =>
       import('./features/dashboard/dashboard.page').then((m) => m.DashboardPage),
   },
+  {
+    path: 'portfolio/new',
+    loadComponent: () =>
+      import('./features/portfolio/new-portfolio/new-portfolio.page').then(
+        (m) => m.NewPortfolioPage
+      ),
+  },
 ];

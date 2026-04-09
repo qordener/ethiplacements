@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 import { PortfolioCard } from '../../shared/components/portfolio-card/portfolio-card';
 
@@ -8,7 +8,7 @@ type PageState = 'loading' | 'loaded' | 'empty' | 'error';
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
-  imports: [PortfolioCard],
+  imports: [PortfolioCard, RouterLink],
   template: `
     @switch (state()) {
       @case ('loading') {
@@ -24,7 +24,12 @@ type PageState = 'loading' | 'loaded' | 'empty' | 'error';
       }
       @case ('empty') {
         <div data-testid="dashboard-empty" class="dashboard-empty" role="status">
-          <p>Aucun portefeuille — commencez par en créer un.</p>
+          <p>Aucun portefeuille pour l'instant.</p>
+          <a
+            data-testid="cta-create-portfolio"
+            routerLink="/portfolio/new"
+            class="dashboard-empty__cta"
+          >Créer mon premier portefeuille</a>
         </div>
       }
       @case ('loaded') {
@@ -65,6 +70,25 @@ type PageState = 'loading' | 'loaded' | 'empty' | 'error';
       padding: var(--space-8, 32px);
       text-align: center;
       color: var(--color-neutral-600, #4A4A6A);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4, 16px);
+    }
+
+    .dashboard-empty__cta {
+      display: inline-block;
+      background: var(--color-primary, #2D6A4F);
+      color: #fff;
+      text-decoration: none;
+      padding: var(--space-2, 8px) var(--space-5, 20px);
+      border-radius: var(--radius-md, 8px);
+      font-size: var(--text-sm, 0.875rem);
+      font-weight: 500;
+      transition: background 0.15s ease;
+    }
+    .dashboard-empty__cta:hover {
+      background: var(--color-primary-dark, #1B4332);
     }
     .dashboard-error {
       color: var(--color-danger, #E76F51);

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError, Subject } from 'rxjs';
-import { Router } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 
 import { DashboardPage } from './dashboard.page';
@@ -15,19 +15,20 @@ describe('DashboardPage', () => {
   let fixture: ComponentFixture<DashboardPage>;
   let component: DashboardPage;
   let mockDashboardService: { getPortfoliosWithSummary: ReturnType<typeof vi.fn> };
-  let mockRouter: { navigate: ReturnType<typeof vi.fn> };
+  let router: Router;
 
   beforeEach(async () => {
     mockDashboardService = { getPortfoliosWithSummary: vi.fn() };
-    mockRouter = { navigate: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [DashboardPage],
       providers: [
+        provideRouter([]),
         { provide: DashboardService, useValue: mockDashboardService },
-        { provide: Router, useValue: mockRouter },
       ],
     }).compileComponents();
+
+    router = TestBed.inject(Router);
 
     fixture = TestBed.createComponent(DashboardPage);
     component = fixture.componentInstance;
@@ -104,6 +105,13 @@ describe('DashboardPage', () => {
       const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
       expect(cards).toHaveLength(0);
     });
+
+    it('should display a CTA link to /portfolio/new in empty state', () => {
+      mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of([]));
+      fixture.detectChanges();
+      const cta = fixture.nativeElement.querySelector('[data-testid="cta-create-portfolio"]');
+      expect(cta).toBeTruthy();
+    });
   });
 
   describe('error state', () => {
@@ -129,10 +137,11 @@ describe('DashboardPage', () => {
 
   describe('navigation', () => {
     it('should navigate to portfolio detail when a card is clicked', () => {
+      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of(MOCK_PORTFOLIOS));
       fixture.detectChanges();
       component.onCardClick('cuid-1');
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/portfolio', 'cuid-1']);
+      expect(navigateSpy).toHaveBeenCalledWith(['/portfolio', 'cuid-1']);
     });
   });
 });
