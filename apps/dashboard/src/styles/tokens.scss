@@ -1,0 +1,212 @@
+// =============================================================================
+// ETHIPLACEMENTS — Design Tokens
+// Architecture : 2 couches (primitive → sémantique)
+// Décision : CSS Custom Properties natives, WCAG AA garanti
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// COUCHE 1 — Primitives (ne jamais utiliser directement dans les composants)
+// -----------------------------------------------------------------------------
+:root {
+  // Couleurs — palette brute
+  --_green-50:  #f0fdf4;
+  --_green-100: #dcfce7;
+  --_green-200: #bbf7d0;
+  --_green-500: #22c55e;
+  --_green-700: #15803d;
+  --_green-800: #166534;
+  --_green-900: #14532d;
+
+  --_amber-50:  #fffbeb;
+  --_amber-400: #fbbf24;
+  --_amber-600: #d97706;
+  --_amber-700: #b45309;
+
+  --_red-50:    #fef2f2;
+  --_red-400:   #f87171;
+  --_red-600:   #dc2626;
+  --_red-700:   #b91c1c;
+
+  --_neutral-0:   #ffffff;
+  --_neutral-50:  #f8f9fa;
+  --_neutral-100: #f0f0f8;
+  --_neutral-200: #e8e8f0;
+  --_neutral-300: #c5c5d8;
+  --_neutral-400: #9898b8;
+  --_neutral-500: #6a6a8a;
+  --_neutral-600: #4a4a6a;
+  --_neutral-700: #3a3a5a;
+  --_neutral-800: #2a2a4a;
+  --_neutral-900: #1a1a2e;
+  --_neutral-950: #0f0f1f;
+
+  // Couleur primaire — vert forêt (existant, conservé)
+  --_primary-400: #4d9e7a;
+  --_primary-500: #2d6a4f;
+  --_primary-700: #1b4332;
+  --_primary-900: #0f2d1f;
+}
+
+// -----------------------------------------------------------------------------
+// COUCHE 2 — Tokens sémantiques (à utiliser dans tous les composants)
+// -----------------------------------------------------------------------------
+:root {
+  // ── Couleurs de surface ────────────────────────────────────────────────────
+  --color-bg:           var(--_neutral-50);
+  --color-surface:      var(--_neutral-0);
+  --color-surface-alt:  var(--_neutral-100);
+  --color-border:       var(--_neutral-200);
+  --color-border-focus: var(--_primary-500);
+
+  // ── Couleurs de texte ──────────────────────────────────────────────────────
+  --color-text:         var(--_neutral-900);   // ratio 17:1 sur --color-bg ✅ AAA
+  --color-text-muted:   var(--_neutral-600);   // ratio 5.9:1 sur --color-bg ✅ AA
+  --color-text-subtle:  var(--_neutral-500);   // ratio 4.6:1 sur --color-bg ✅ AA
+  --color-text-inverse: var(--_neutral-0);
+
+  // ── Couleur primaire ───────────────────────────────────────────────────────
+  --color-primary:      var(--_primary-500);
+  --color-primary-dark: var(--_primary-700);
+  --color-primary-light:var(--_green-100);
+
+  // ── Scores ESG — palette sémantique ───────────────────────────────────────
+  // Score élevé (≥ 70) : positif
+  --color-esg-high:         var(--_green-700);
+  --color-esg-high-bg:      var(--_green-50);
+  --color-esg-high-border:  var(--_green-200);
+
+  // Score moyen (40-69) : prudence
+  --color-esg-medium:       var(--_amber-700);
+  --color-esg-medium-bg:    var(--_amber-50);
+  --color-esg-medium-border:var(--_amber-400);
+
+  // Score faible (< 40) : alerte
+  --color-esg-low:          var(--_red-700);
+  --color-esg-low-bg:       var(--_red-50);
+  --color-esg-low-border:   var(--_red-400);
+
+  // Score inconnu / N/A
+  --color-esg-na:           var(--_neutral-500);
+  --color-esg-na-bg:        var(--_neutral-100);
+  --color-esg-na-border:    var(--_neutral-300);
+
+  // ── États système ──────────────────────────────────────────────────────────
+  --color-success:      var(--_green-700);
+  --color-success-bg:   var(--_green-50);
+  --color-warning:      var(--_amber-600);
+  --color-warning-bg:   var(--_amber-50);
+  --color-danger:       var(--_red-600);
+  --color-danger-bg:    var(--_red-50);
+  --color-info:         #1d4ed8;
+  --color-info-bg:      #eff6ff;
+
+  // ── Performance financière ─────────────────────────────────────────────────
+  --color-gain:         var(--_green-700);   // valeur positive
+  --color-loss:         var(--_red-600);     // valeur négative
+  --color-neutral-perf: var(--_neutral-600); // zéro / N/A
+
+  // ── Typographie ────────────────────────────────────────────────────────────
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --text-xs:   0.75rem;    // 12px — labels, badges
+  --text-sm:   0.875rem;   // 14px — body small, table
+  --text-base: 1rem;       // 16px — body
+  --text-lg:   1.125rem;   // 18px — sous-titres
+  --text-xl:   1.25rem;    // 20px — titres section
+  --text-2xl:  1.5rem;     // 24px — titres page
+  --text-3xl:  1.875rem;   // 30px — score ESG principal
+  --text-4xl:  2.25rem;    // 36px — hero metric
+
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+  --leading-loose:  1.75;
+
+  // ── Espacement (base 4px) ──────────────────────────────────────────────────
+  --space-0:  0;
+  --space-1:  0.25rem;  //  4px
+  --space-2:  0.5rem;   //  8px
+  --space-3:  0.75rem;  // 12px
+  --space-4:  1rem;     // 16px
+  --space-5:  1.25rem;  // 20px
+  --space-6:  1.5rem;   // 24px
+  --space-8:  2rem;     // 32px
+  --space-10: 2.5rem;   // 40px
+  --space-12: 3rem;     // 48px
+  --space-16: 4rem;     // 64px
+
+  // ── Radius ─────────────────────────────────────────────────────────────────
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  // ── Ombres ─────────────────────────────────────────────────────────────────
+  --shadow-sm: 0 1px 2px rgba(26, 26, 46, 0.06);
+  --shadow-md: 0 4px 6px rgba(26, 26, 46, 0.08), 0 1px 3px rgba(26, 26, 46, 0.06);
+  --shadow-lg: 0 10px 15px rgba(26, 26, 46, 0.1), 0 4px 6px rgba(26, 26, 46, 0.06);
+
+  // ── Transitions ────────────────────────────────────────────────────────────
+  --transition-fast:   0.1s ease;
+  --transition-normal: 0.15s ease;
+  --transition-slow:   0.25s ease;
+
+  // ── Layout ─────────────────────────────────────────────────────────────────
+  --max-width-content: 1024px;
+  --max-width-form:    520px;
+
+  // ── Focus (accessibilité) ──────────────────────────────────────────────────
+  --focus-ring: 0 0 0 3px rgba(45, 106, 79, 0.25);
+  --focus-ring-danger: 0 0 0 3px rgba(220, 38, 38, 0.25);
+
+  // ── Z-index ────────────────────────────────────────────────────────────────
+  --z-dropdown: 100;
+  --z-modal:    200;
+  --z-toast:    300;
+}
+
+// -----------------------------------------------------------------------------
+// Utilitaires globaux
+// -----------------------------------------------------------------------------
+
+// Classe pour aligner les chiffres dans les tableaux (JetBrains Mono)
+.tabular-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+// Classe screen-reader only (accessibilité)
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+// Helper couleur ESG dynamique selon le score
+@mixin esg-color($score) {
+  @if $score >= 70 {
+    color: var(--color-esg-high);
+    background: var(--color-esg-high-bg);
+    border-color: var(--color-esg-high-border);
+  } @else if $score >= 40 {
+    color: var(--color-esg-medium);
+    background: var(--color-esg-medium-bg);
+    border-color: var(--color-esg-medium-border);
+  } @else {
+    color: var(--color-esg-low);
+    background: var(--color-esg-low-bg);
+    border-color: var(--color-esg-low-border);
+  }
+}
