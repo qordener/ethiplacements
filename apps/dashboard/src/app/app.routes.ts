@@ -14,4 +14,11 @@ export const appRoutes: Route[] = [
         (m) => m.NewPortfolioPage
       ),
   },
+  {
+    path: 'portfolio/:id',
+    loadComponent: () =>
+      import('./features/portfolio/portfolio-detail/portfolio-detail.page').then(
+        (m) => m.PortfolioDetailPage
+      ),
+  },
 ];
