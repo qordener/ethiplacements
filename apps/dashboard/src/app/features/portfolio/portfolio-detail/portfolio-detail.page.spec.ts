@@ -61,13 +61,13 @@ describe('PortfolioDetailPage', () => {
   let component: PortfolioDetailPage;
   let mockService: { getPortfolioDetail: ReturnType<typeof vi.fn> };
   let mockHoldingService: { create: ReturnType<typeof vi.fn> };
-  let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; updatePrice: ReturnType<typeof vi.fn> };
   let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = { getPortfolioDetail: vi.fn() };
     mockHoldingService = { create: vi.fn() };
-    mockAssetService = { findAll: vi.fn(), create: vi.fn() };
+    mockAssetService = { findAll: vi.fn(), create: vi.fn(), updatePrice: vi.fn() };
     mockEsgScoreService = { create: vi.fn() };
 
     await TestBed.configureTestingModule({
@@ -304,6 +304,84 @@ describe('PortfolioDetailPage', () => {
     it('should have a table or list with accessible label for holdings', () => {
       const table = fixture.nativeElement.querySelector('[data-testid="holdings-table"]');
       expect(table).toBeTruthy();
+    });
+  });
+
+  // ─── Mise à jour du prix actuel ──────────────────────────────────────────────
+
+  describe('mise à jour du prix actuel', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      mockAssetService.findAll.mockReturnValue(of([]));
+      fixture.detectChanges();
+    });
+
+    it('should display a price edit button for each holding row', () => {
+      const btns = fixture.nativeElement.querySelectorAll('[data-testid="price-btn"]');
+      expect(btns).toHaveLength(2);
+    });
+
+    it('should open the price modal when clicking the price button', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="price-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should pre-fill the price with the current manualPrice when available', () => {
+      // holding-1 has manualPrice = 155
+      const btn = fixture.nativeElement.querySelector('[data-testid="price-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      expect(component.priceForm.value.manualPrice).toBe(155);
+    });
+
+    it('should pre-fill with averagePrice when manualPrice is null', () => {
+      // holding-2 has manualPrice = null, averagePrice = 300
+      const btns = fixture.nativeElement.querySelectorAll('[data-testid="price-btn"]');
+      btns[1].click();
+      fixture.detectChanges();
+
+      expect(component.priceForm.value.manualPrice).toBe(300);
+    });
+
+    it('should call AssetService.updatePrice on form submit', () => {
+      const updatedAsset = { ...MOCK_DETAIL.portfolio.holdings[0].asset, manualPrice: 160 };
+      mockAssetService.updatePrice.mockReturnValue(of(updatedAsset));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="price-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.priceForm.patchValue({ manualPrice: 160 });
+      component.onSubmitPrice();
+
+      expect(mockAssetService.updatePrice).toHaveBeenCalledWith(
+        MOCK_DETAIL.portfolio.holdings[0].asset.id,
+        expect.objectContaining({ manualPrice: 160 })
+      );
+    });
+
+    it('should reload data and close modal after successful price update', () => {
+      const updatedAsset = { ...MOCK_DETAIL.portfolio.holdings[0].asset, manualPrice: 160 };
+      mockAssetService.updatePrice.mockReturnValue(of(updatedAsset));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="price-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.priceForm.patchValue({ manualPrice: 160 });
+      component.onSubmitPrice();
+      fixture.detectChanges();
+
+      expect(mockService.getPortfolioDetail).toHaveBeenCalledTimes(2);
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeNull();
     });
   });
 

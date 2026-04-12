@@ -6,7 +6,7 @@ import { switchMap } from 'rxjs';
 
 import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore } from '../portfolio-detail.service';
 import { HoldingService } from '../holding.service';
-import { AssetService, AssetItem, AssetType } from '../asset.service';
+import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
 import { MetricCard } from '../../../shared/components/metric-card/metric-card';
 import { ScoreBadge } from '../../../shared/components/score-badge/score-badge';
@@ -113,7 +113,16 @@ type PageState = 'loading' | 'loaded' | 'error';
                       <td>{{ holding.asset.name }}</td>
                       <td>{{ holding.asset.type }}</td>
                       <td class="holdings-table__num">{{ holding.quantity }}</td>
-                      <td class="holdings-table__num">{{ holding.averagePrice | number:'1.2-2' }} €</td>
+                      <td class="holdings-table__num holdings-table__price">
+                        {{ (holding.asset.manualPrice ?? holding.averagePrice) | number:'1.2-2' }} €
+                        <button
+                          data-testid="price-btn"
+                          type="button"
+                          class="btn-esg"
+                          [attr.aria-label]="'Mettre à jour le prix de ' + holding.asset.ticker"
+                          (click)="openPriceModal(holding)"
+                        >✎</button>
+                      </td>
                       <td class="holdings-table__num holdings-table__esg">
                         <epi-score-badge [score]="getLatestEsgScore(holding)" />
                         <button
@@ -135,6 +144,68 @@ type PageState = 'loading' | 'loaded' | 'error';
       }
 
     </div>
+
+    <!-- Modal de prix actuel -->
+    <epi-modal
+      [open]="priceModalOpen()"
+      [title]="'Prix actuel — ' + priceTargetTicker"
+      (closeRequest)="closePriceModal()"
+    >
+      <form
+        id="price-form"
+        [formGroup]="priceForm"
+        (ngSubmit)="onSubmitPrice()"
+        class="holding-form"
+      >
+        <epi-form-field label="Prix actuel (€)" for="manual-price" [required]="true">
+          <input
+            id="manual-price"
+            data-testid="input-manual-price"
+            type="number"
+            class="form-input"
+            formControlName="manualPrice"
+            min="0"
+            step="0.01"
+            placeholder="ex : 155.50"
+          />
+        </epi-form-field>
+
+        <epi-form-field label="Date du cours" for="price-date">
+          <input
+            id="price-date"
+            data-testid="input-price-date"
+            type="date"
+            class="form-input"
+            formControlName="manualPriceDate"
+          />
+        </epi-form-field>
+
+        @if (priceSubmitError()) {
+          <p data-testid="price-submit-error" class="holding-form__error" role="alert">
+            {{ priceSubmitError() }}
+          </p>
+        }
+      </form>
+
+      <div slot="footer">
+        <button
+          type="button"
+          class="btn btn--secondary"
+          (click)="closePriceModal()"
+          [disabled]="priceSubmitting()"
+        >
+          Annuler
+        </button>
+        <button
+          type="submit"
+          form="price-form"
+          class="btn btn--primary"
+          [disabled]="priceSubmitting() || priceForm.invalid"
+        >
+          {{ priceSubmitting() ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+      </div>
+    </epi-modal>
 
     <!-- Modal de score ESG -->
     <epi-modal
@@ -558,6 +629,18 @@ export class PortfolioDetailPage implements OnInit {
     averagePrice: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
   });
 
+  // ─── Prix actuel ────────────────────────────────────────────────────────────
+  priceModalOpen   = signal(false);
+  priceSubmitting  = signal(false);
+  priceSubmitError = signal<string | null>(null);
+  priceTargetAssetId = '';
+  priceTargetTicker  = '';
+
+  priceForm = new FormGroup({
+    manualPrice:     new FormControl<number | null>(null, [Validators.required, Validators.min(0)]),
+    manualPriceDate: new FormControl(new Date().toISOString().slice(0, 10)),
+  });
+
   // ─── ESG Score ──────────────────────────────────────────────────────────────
   esgModalOpen   = signal(false);
   esgSubmitting  = signal(false);
@@ -645,6 +728,46 @@ export class PortfolioDetailPage implements OnInit {
   formatEsgScore(score: number | null): string {
     if (score === null) return '—';
     return Math.round(score).toString();
+  }
+
+  openPriceModal(holding: Holding) {
+    this.priceTargetAssetId = holding.asset.id;
+    this.priceTargetTicker  = holding.asset.ticker;
+    this.priceForm.reset({
+      manualPrice:     holding.asset.manualPrice ?? holding.averagePrice,
+      manualPriceDate: new Date().toISOString().slice(0, 10),
+    });
+    this.priceSubmitError.set(null);
+    this.priceModalOpen.set(true);
+  }
+
+  closePriceModal() {
+    this.priceModalOpen.set(false);
+  }
+
+  onSubmitPrice() {
+    if (this.priceForm.invalid) return;
+
+    const { manualPrice, manualPriceDate } = this.priceForm.value;
+    const payload: UpdatePricePayload = {
+      manualPrice: manualPrice!,
+      ...(manualPriceDate ? { manualPriceDate } : {}),
+    };
+
+    this.priceSubmitting.set(true);
+    this.priceSubmitError.set(null);
+
+    this.assetService.updatePrice(this.priceTargetAssetId, payload).subscribe({
+      next: () => {
+        this.priceSubmitting.set(false);
+        this.priceModalOpen.set(false);
+        this.loadData();
+      },
+      error: () => {
+        this.priceSubmitting.set(false);
+        this.priceSubmitError.set('Erreur lors de la mise à jour du prix.');
+      },
+    });
   }
 
   openEsgModal(holding: Holding) {

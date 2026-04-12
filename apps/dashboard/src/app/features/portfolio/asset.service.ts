@@ -21,6 +21,11 @@ export interface AssetItem {
   esgScores: { id: string; score: number; provider: string; date: string }[];
 }
 
+export interface UpdatePricePayload {
+  manualPrice: number;
+  manualPriceDate?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AssetService {
   private readonly http = inject(HttpClient);
@@ -31,5 +36,9 @@ export class AssetService {
 
   create(dto: CreateAssetPayload): Observable<AssetItem> {
     return this.http.post<AssetItem>('/api/assets', dto);
+  }
+
+  updatePrice(id: string, dto: UpdatePricePayload): Observable<AssetItem> {
+    return this.http.patch<AssetItem>(`/api/assets/${id}`, dto);
   }
 }

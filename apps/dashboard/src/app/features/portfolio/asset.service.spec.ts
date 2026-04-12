@@ -92,4 +92,45 @@ describe('AssetService', () => {
       await expect(promise).rejects.toBeTruthy();
     });
   });
+
+  // ─── updatePrice ──────────────────────────────────────────────────────────
+
+  describe('updatePrice()', () => {
+    it('should PATCH /api/assets/:id with manualPrice', async () => {
+      const updated = { ...MOCK_ASSETS[0], manualPrice: 162.5 };
+      const promise = firstValueFrom(service.updatePrice('a1', { manualPrice: 162.5 }));
+
+      const req = httpMock.expectOne('/api/assets/a1');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual({ manualPrice: 162.5 });
+      req.flush(updated);
+
+      const result = await promise;
+      expect(result.manualPrice).toBe(162.5);
+    });
+
+    it('should include manualPriceDate when provided', async () => {
+      const updated = { ...MOCK_ASSETS[0], manualPrice: 155, manualPriceDate: '2026-04-12' };
+      const promise = firstValueFrom(
+        service.updatePrice('a1', { manualPrice: 155, manualPriceDate: '2026-04-12' })
+      );
+
+      const req = httpMock.expectOne('/api/assets/a1');
+      expect(req.request.body).toEqual({ manualPrice: 155, manualPriceDate: '2026-04-12' });
+      req.flush(updated);
+
+      await promise;
+    });
+
+    it('should throw when asset does not exist (404)', async () => {
+      const promise = firstValueFrom(service.updatePrice('nonexistent', { manualPrice: 100 }));
+
+      httpMock.expectOne('/api/assets/nonexistent').flush('Not found', {
+        status: 404,
+        statusText: 'Not Found',
+      });
+
+      await expect(promise).rejects.toBeTruthy();
+    });
+  });
 });
