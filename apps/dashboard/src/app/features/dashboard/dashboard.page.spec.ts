@@ -7,8 +7,10 @@ import { DashboardPage } from './dashboard.page';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 
 const MOCK_PORTFOLIOS: PortfolioCardData[] = [
-  { id: 'cuid-1', name: 'PEA Éthique', description: 'Mon PEA ISR', totalValue: 11200, changePercent: 12, esgScore: 72 },
-  { id: 'cuid-2', name: 'Livret Solidaire', description: null, totalValue: 5000, changePercent: 0, esgScore: null },
+  { id: 'cuid-1', name: 'PEA Éthique',      description: 'Mon PEA ISR', totalValue: 11200, changePercent: 12,   esgScore: 75  }, // high
+  { id: 'cuid-2', name: 'Livret Solidaire',  description: null,          totalValue: 5000,  changePercent: 0,    esgScore: null }, // na
+  { id: 'cuid-3', name: 'PEA Moyen',         description: null,          totalValue: 3000,  changePercent: -2,   esgScore: 55  }, // medium
+  { id: 'cuid-4', name: 'Compte Spéculatif', description: null,          totalValue: 1500,  changePercent: 5,    esgScore: 25  }, // low
 ];
 
 describe('DashboardPage', () => {
@@ -63,7 +65,7 @@ describe('DashboardPage', () => {
       mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of(MOCK_PORTFOLIOS));
       fixture.detectChanges();
       const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
-      expect(cards).toHaveLength(2);
+      expect(cards).toHaveLength(4);
     });
 
     it('should display portfolio names in the cards', () => {
@@ -142,6 +144,78 @@ describe('DashboardPage', () => {
       fixture.detectChanges();
       component.onCardClick('cuid-1');
       expect(navigateSpy).toHaveBeenCalledWith(['/portfolio', 'cuid-1']);
+    });
+  });
+
+  describe('filtres ESG', () => {
+    beforeEach(() => {
+      mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of(MOCK_PORTFOLIOS));
+      fixture.detectChanges();
+    });
+
+    it('should display the filter bar', () => {
+      const bar = fixture.nativeElement.querySelector('[data-testid="esg-filter-bar"]');
+      expect(bar).toBeTruthy();
+    });
+
+    it('should display all 4 portfolios by default (filter = all)', () => {
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(4);
+    });
+
+    it('should show only high-score portfolios when "Élevé" filter is active', () => {
+      component.setFilter('high');
+      fixture.detectChanges();
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(1);
+      expect(fixture.nativeElement.querySelector('[data-testid="portfolio-name"]').textContent).toContain('PEA Éthique');
+    });
+
+    it('should show only medium-score portfolios when "Moyen" filter is active', () => {
+      component.setFilter('medium');
+      fixture.detectChanges();
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(1);
+      expect(fixture.nativeElement.querySelector('[data-testid="portfolio-name"]').textContent).toContain('PEA Moyen');
+    });
+
+    it('should show only low-score portfolios when "Faible" filter is active', () => {
+      component.setFilter('low');
+      fixture.detectChanges();
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(1);
+      expect(fixture.nativeElement.querySelector('[data-testid="portfolio-name"]').textContent).toContain('Compte Spéculatif');
+    });
+
+    it('should show only unrated portfolios when "Non noté" filter is active', () => {
+      component.setFilter('na');
+      fixture.detectChanges();
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(1);
+      expect(fixture.nativeElement.querySelector('[data-testid="portfolio-name"]').textContent).toContain('Livret Solidaire');
+    });
+
+    it('should restore all portfolios when "Tous" filter is selected', () => {
+      component.setFilter('high');
+      fixture.detectChanges();
+      component.setFilter('all');
+      fixture.detectChanges();
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(4);
+    });
+
+    it('should mark the active filter button with aria-pressed="true"', () => {
+      component.setFilter('high');
+      fixture.detectChanges();
+      const activeBtn = fixture.nativeElement.querySelector('[data-testid="filter-high"]');
+      expect(activeBtn.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('should mark inactive filter buttons with aria-pressed="false"', () => {
+      component.setFilter('high');
+      fixture.detectChanges();
+      const allBtn = fixture.nativeElement.querySelector('[data-testid="filter-all"]');
+      expect(allBtn.getAttribute('aria-pressed')).toBe('false');
     });
   });
 });

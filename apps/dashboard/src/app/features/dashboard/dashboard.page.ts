@@ -1,9 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 import { PortfolioCard } from '../../shared/components/portfolio-card/portfolio-card';
 
 type PageState = 'loading' | 'loaded' | 'empty' | 'error';
+type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -33,8 +34,19 @@ type PageState = 'loading' | 'loaded' | 'empty' | 'error';
         </div>
       }
       @case ('loaded') {
+        <div data-testid="esg-filter-bar" class="esg-filter-bar" role="group" aria-label="Filtrer par score ESG">
+          @for (f of filters; track f.value) {
+            <button
+              [attr.data-testid]="'filter-' + f.value"
+              [attr.aria-pressed]="esgFilter() === f.value ? 'true' : 'false'"
+              [class.esg-filter-bar__btn--active]="esgFilter() === f.value"
+              class="esg-filter-bar__btn"
+              (click)="setFilter(f.value)"
+            >{{ f.label }}</button>
+          }
+        </div>
         <div class="dashboard-grid">
-          @for (portfolio of portfolios(); track portfolio.id) {
+          @for (portfolio of filteredPortfolios(); track portfolio.id) {
             <app-portfolio-card
               [id]="portfolio.id"
               [name]="portfolio.name"
@@ -94,6 +106,31 @@ type PageState = 'loading' | 'loaded' | 'empty' | 'error';
       color: var(--color-danger, #E76F51);
     }
 
+    .esg-filter-bar {
+      display: flex;
+      gap: var(--space-2, 8px);
+      padding: var(--space-4, 16px) var(--space-4, 16px) 0;
+      flex-wrap: wrap;
+    }
+    .esg-filter-bar__btn {
+      padding: var(--space-1, 4px) var(--space-3, 12px);
+      border: 1px solid var(--color-neutral-300, #D1D5DB);
+      border-radius: var(--radius-full, 9999px);
+      background: transparent;
+      font-size: var(--text-sm, 0.875rem);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      color: var(--color-neutral-700, #374151);
+    }
+    .esg-filter-bar__btn:hover {
+      background: var(--color-neutral-100, #F3F4F6);
+    }
+    .esg-filter-bar__btn--active {
+      background: var(--color-primary, #2D6A4F);
+      color: #fff;
+      border-color: var(--color-primary, #2D6A4F);
+    }
+
     .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -117,6 +154,30 @@ export class DashboardPage implements OnInit {
 
   state = signal<PageState>('loading');
   portfolios = signal<PortfolioCardData[]>([]);
+  esgFilter = signal<EsgFilter>('all');
+
+  filteredPortfolios = computed(() => {
+    const filter = this.esgFilter();
+    const all = this.portfolios();
+    if (filter === 'all') return all;
+    if (filter === 'na') return all.filter(p => p.esgScore == null);
+    if (filter === 'high') return all.filter(p => p.esgScore != null && p.esgScore >= 70);
+    if (filter === 'medium') return all.filter(p => p.esgScore != null && p.esgScore >= 40 && p.esgScore < 70);
+    if (filter === 'low') return all.filter(p => p.esgScore != null && p.esgScore < 40);
+    return all;
+  });
+
+  readonly filters: { value: EsgFilter; label: string }[] = [
+    { value: 'all',    label: 'Tous' },
+    { value: 'high',   label: 'Élevé ≥70' },
+    { value: 'medium', label: 'Moyen 40–69' },
+    { value: 'low',    label: 'Faible <40' },
+    { value: 'na',     label: 'Non noté' },
+  ];
+
+  setFilter(filter: EsgFilter) {
+    this.esgFilter.set(filter);
+  }
 
   ngOnInit() {
     this.dashboardService.getPortfoliosWithSummary().subscribe({
