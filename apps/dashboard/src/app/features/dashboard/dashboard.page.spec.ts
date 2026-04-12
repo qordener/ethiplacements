@@ -82,11 +82,11 @@ describe('DashboardPage', () => {
       expect(values[0].textContent).toContain('200');
     });
 
-    it('should display the ESG gauge for a portfolio with esgScore', () => {
+    it('should display the ESG score badge for a portfolio with esgScore', () => {
       mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of(MOCK_PORTFOLIOS));
       fixture.detectChanges();
-      const gauges = fixture.nativeElement.querySelectorAll('[data-testid="esg-gauge"]');
-      expect(gauges.length).toBeGreaterThanOrEqual(1);
+      const badges = fixture.nativeElement.querySelectorAll('[data-testid="score-badge"]');
+      expect(badges.length).toBeGreaterThanOrEqual(1);
     });
   });
 

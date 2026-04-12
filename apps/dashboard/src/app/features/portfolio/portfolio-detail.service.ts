@@ -2,12 +2,20 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin, map } from 'rxjs';
 
+export interface EsgScore {
+  id: string;
+  score: number;
+  provider: string;
+  date: string;
+}
+
 export interface Asset {
   id: string;
   name: string;
   ticker: string;
   type: string;
   manualPrice: number | null;
+  esgScores: EsgScore[];
 }
 
 export interface Holding {

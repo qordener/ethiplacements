@@ -6,6 +6,9 @@ import { vi } from 'vitest';
 
 import { PortfolioDetailPage } from './portfolio-detail.page';
 import { PortfolioDetailService, PortfolioDetailData } from '../portfolio-detail.service';
+import { HoldingService } from '../holding.service';
+import { AssetService } from '../asset.service';
+import { EsgScoreService } from '../esg-score.service';
 
 const MOCK_DETAIL: PortfolioDetailData = {
   portfolio: {
@@ -25,6 +28,7 @@ const MOCK_DETAIL: PortfolioDetailData = {
           ticker: 'BN',
           type: 'STOCK',
           manualPrice: 155,
+          esgScores: [{ id: 'esg-1', score: 75, provider: 'manual', date: '2024-01-01T00:00:00.000Z' }],
         },
       },
       {
@@ -37,6 +41,7 @@ const MOCK_DETAIL: PortfolioDetailData = {
           ticker: 'ENGB',
           type: 'BOND',
           manualPrice: null,
+          esgScores: [],
         },
       },
     ],
@@ -55,15 +60,24 @@ describe('PortfolioDetailPage', () => {
   let fixture: ComponentFixture<PortfolioDetailPage>;
   let component: PortfolioDetailPage;
   let mockService: { getPortfolioDetail: ReturnType<typeof vi.fn> };
+  let mockHoldingService: { create: ReturnType<typeof vi.fn> };
+  let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = { getPortfolioDetail: vi.fn() };
+    mockHoldingService = { create: vi.fn() };
+    mockAssetService = { findAll: vi.fn(), create: vi.fn() };
+    mockEsgScoreService = { create: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [PortfolioDetailPage],
       providers: [
         provideRouter([]),
         { provide: PortfolioDetailService, useValue: mockService },
+        { provide: HoldingService, useValue: mockHoldingService },
+        { provide: AssetService, useValue: mockAssetService },
+        { provide: EsgScoreService, useValue: mockEsgScoreService },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'cuid-1' } } },
@@ -290,6 +304,208 @@ describe('PortfolioDetailPage', () => {
     it('should have a table or list with accessible label for holdings', () => {
       const table = fixture.nativeElement.querySelector('[data-testid="holdings-table"]');
       expect(table).toBeTruthy();
+    });
+  });
+
+  // ─── Score ESG manuel ────────────────────────────────────────────────────────
+
+  describe('score ESG manuel', () => {
+    const HOLDING_WITH_ESG = MOCK_DETAIL.portfolio.holdings[0]; // asset-1, ticker BN, esgScore 75
+
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      mockAssetService.findAll.mockReturnValue(of([]));
+      fixture.detectChanges();
+    });
+
+    it('should display an ESG score button for each holding row', () => {
+      const btns = fixture.nativeElement.querySelectorAll('[data-testid="esg-score-btn"]');
+      expect(btns).toHaveLength(2);
+    });
+
+    it('should open the ESG modal when clicking the score button', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="esg-score-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should pre-fill the score field with the current ESG score', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="esg-score-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      expect(component.esgForm.value.score).toBe(75);
+    });
+
+    it('should start with score 0 when holding has no ESG score', () => {
+      const btns = fixture.nativeElement.querySelectorAll('[data-testid="esg-score-btn"]');
+      btns[1].click(); // holding-2 has no esgScores
+      fixture.detectChanges();
+
+      expect(component.esgForm.value.score).toBe(0);
+    });
+
+    it('should call EsgScoreService.create on form submit', () => {
+      const newScore = { id: 'esg-new', assetId: 'asset-1', score: 80, provider: 'manual', date: '2026-04-12T00:00:00.000Z', details: null };
+      mockEsgScoreService.create.mockReturnValue(of(newScore));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="esg-score-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.esgForm.patchValue({ score: 80 });
+      component.onSubmitEsgScore();
+
+      expect(mockEsgScoreService.create).toHaveBeenCalledWith(
+        HOLDING_WITH_ESG.asset.id,
+        expect.objectContaining({ score: 80, provider: 'manual' })
+      );
+    });
+
+    it('should reload data and close modal after successful ESG score submission', () => {
+      const newScore = { id: 'esg-new', assetId: 'asset-1', score: 80, provider: 'manual', date: '2026-04-12T00:00:00.000Z', details: null };
+      mockEsgScoreService.create.mockReturnValue(of(newScore));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="esg-score-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.esgForm.patchValue({ score: 80 });
+      component.onSubmitEsgScore();
+      fixture.detectChanges();
+
+      expect(mockService.getPortfolioDetail).toHaveBeenCalledTimes(2);
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeNull();
+    });
+  });
+
+  // ─── Ajout de position ───────────────────────────────────────────────────────
+
+  describe('ajout de position', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      mockAssetService.findAll.mockReturnValue(of([]));
+      fixture.detectChanges();
+    });
+
+    it('should display an "add holding" button in the loaded state', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      expect(btn).toBeTruthy();
+    });
+
+    it('should open the modal when the add button is clicked', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should load assets when the modal opens', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      btn.click();
+
+      expect(mockAssetService.findAll).toHaveBeenCalled();
+    });
+
+    it('should close the modal when closeRequest is emitted', () => {
+      // open modal
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      // click close button
+      const closeBtn = fixture.nativeElement.querySelector('[data-testid="modal-close-btn"]');
+      closeBtn.click();
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeNull();
+    });
+
+    it('should call HoldingService.create when form is submitted with an existing asset', () => {
+      const existingAsset = { id: 'a1', name: 'Danone', ticker: 'BN', type: 'STOCK', manualPrice: 155, esgScores: [] };
+      mockAssetService.findAll.mockReturnValue(of([existingAsset]));
+      mockHoldingService.create.mockReturnValue(of({ id: 'h-new', portfolioId: 'cuid-1', assetId: 'a1', quantity: 5, averagePrice: 150, asset: existingAsset }));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.holdingForm.setValue({
+        ticker: 'BN',
+        assetName: 'Danone',
+        assetType: 'STOCK',
+        quantity: 5,
+        averagePrice: 150,
+      });
+      fixture.detectChanges();
+
+      component.onSubmitHolding();
+
+      expect(mockHoldingService.create).toHaveBeenCalledWith('cuid-1', {
+        assetId: 'a1',
+        quantity: 5,
+        averagePrice: 150,
+      });
+    });
+
+    it('should create a new asset then holding when ticker is not found', () => {
+      const newAsset = { id: 'a-new', name: 'Tesla', ticker: 'TSLA', type: 'STOCK', manualPrice: null, esgScores: [] };
+      mockAssetService.findAll.mockReturnValue(of([]));
+      mockAssetService.create.mockReturnValue(of(newAsset));
+      mockHoldingService.create.mockReturnValue(of({ id: 'h-new', portfolioId: 'cuid-1', assetId: 'a-new', quantity: 10, averagePrice: 200, asset: newAsset }));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.holdingForm.setValue({
+        ticker: 'TSLA',
+        assetName: 'Tesla',
+        assetType: 'STOCK',
+        quantity: 10,
+        averagePrice: 200,
+      });
+
+      component.onSubmitHolding();
+
+      expect(mockAssetService.create).toHaveBeenCalledWith({
+        ticker: 'TSLA',
+        name: 'Tesla',
+        type: 'STOCK',
+      });
+    });
+
+    it('should reload portfolio data and close modal after successful submission', () => {
+      const existingAsset = { id: 'a1', name: 'Danone', ticker: 'BN', type: 'STOCK', manualPrice: 155, esgScores: [] };
+      mockAssetService.findAll.mockReturnValue(of([existingAsset]));
+      mockHoldingService.create.mockReturnValue(of({ id: 'h-new', portfolioId: 'cuid-1', assetId: 'a1', quantity: 5, averagePrice: 150, asset: existingAsset }));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.holdingForm.setValue({ ticker: 'BN', assetName: 'Danone', assetType: 'STOCK', quantity: 5, averagePrice: 150 });
+      component.onSubmitHolding();
+      fixture.detectChanges();
+
+      // Portfolio data should be reloaded (getPortfolioDetail called at least twice: init + after submit)
+      expect(mockService.getPortfolioDetail).toHaveBeenCalledTimes(2);
+
+      // Modal should be closed
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeNull();
     });
   });
 });

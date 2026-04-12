@@ -1,13 +1,13 @@
 import { Component, computed, input, output } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { EsgScoreGauge } from '../esg-score-gauge/esg-score-gauge';
+import { ScoreBadge } from '../score-badge/score-badge';
 
 export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutral';
 
 @Component({
   selector: 'app-portfolio-card',
   standalone: true,
-  imports: [CommonModule, EsgScoreGauge],
+  imports: [CommonModule, ScoreBadge],
   template: `
     <div
       role="button"
@@ -37,11 +37,7 @@ export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutra
 
       @if (esgScore() !== null) {
         <div data-testid="portfolio-esg" class="portfolio-card__esg">
-          <app-esg-score-gauge
-            [score]="esgScore()!"
-            provider="—"
-            updatedAt=""
-          />
+          <epi-score-badge [score]="esgScore()" label="Score ESG" />
         </div>
       }
     </div>

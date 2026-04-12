@@ -117,10 +117,34 @@ describe('PortfolioCard', () => {
       expect(el).toBeFalsy();
     });
 
-    it('should render EsgScoreGauge inside esg section', async () => {
+    it('should render ScoreBadge inside esg section', async () => {
       await setup({ esgScore: 74 });
-      const gauge = fixture.nativeElement.querySelector('[data-testid="portfolio-esg"] app-esg-score-gauge');
-      expect(gauge).toBeTruthy();
+      const badge = fixture.nativeElement.querySelector('[data-testid="portfolio-esg"] [data-testid="score-badge"]');
+      expect(badge).toBeTruthy();
+    });
+
+    it('should display the numeric score in the ScoreBadge', async () => {
+      await setup({ esgScore: 74 });
+      const badge = fixture.nativeElement.querySelector('[data-testid="score-badge"]');
+      expect(badge.textContent).toContain('74');
+    });
+
+    it('should apply high-tier style for score >= 70', async () => {
+      await setup({ esgScore: 75 });
+      const badge = fixture.nativeElement.querySelector('[data-testid="score-badge"]');
+      expect(badge.classList).toContain('score-badge--high');
+    });
+
+    it('should apply medium-tier style for score between 40 and 69', async () => {
+      await setup({ esgScore: 55 });
+      const badge = fixture.nativeElement.querySelector('[data-testid="score-badge"]');
+      expect(badge.classList).toContain('score-badge--medium');
+    });
+
+    it('should apply low-tier style for score below 40', async () => {
+      await setup({ esgScore: 30 });
+      const badge = fixture.nativeElement.querySelector('[data-testid="score-badge"]');
+      expect(badge.classList).toContain('score-badge--low');
     });
   });
 
