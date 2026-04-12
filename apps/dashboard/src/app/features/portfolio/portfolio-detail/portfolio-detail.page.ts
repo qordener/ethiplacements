@@ -98,11 +98,12 @@ type PageState = 'loading' | 'loaded' | 'error';
               <table data-testid="holdings-table" class="holdings-table">
                 <thead>
                   <tr>
+                    <th scope="col"></th>
                     <th scope="col">Ticker</th>
                     <th scope="col">Nom</th>
                     <th scope="col">Type</th>
                     <th scope="col" class="holdings-table__num">Quantité</th>
-                    <th scope="col" class="holdings-table__num">Prix moyen</th>
+                    <th scope="col" class="holdings-table__num">Prix actuel</th>
                     <th scope="col" class="holdings-table__num">Score ESG</th>
                   </tr>
                 </thead>
@@ -122,6 +123,15 @@ type PageState = 'loading' | 'loaded' | 'error';
                           [attr.aria-label]="'Mettre à jour le prix de ' + holding.asset.ticker"
                           (click)="openPriceModal(holding)"
                         >✎</button>
+                      </td>
+                      <td class="holdings-table__actions">
+                        <button
+                          data-testid="delete-holding-btn"
+                          type="button"
+                          class="btn-esg btn-esg--danger"
+                          [attr.aria-label]="'Supprimer la position ' + holding.asset.ticker"
+                          (click)="openDeleteModal(holding)"
+                        >🗑</button>
                       </td>
                       <td class="holdings-table__num holdings-table__esg">
                         <epi-score-badge [score]="getLatestEsgScore(holding)" />
@@ -144,6 +154,37 @@ type PageState = 'loading' | 'loaded' | 'error';
       }
 
     </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <epi-modal
+      [open]="deleteModalOpen()"
+      title="Supprimer la position"
+      (closeRequest)="closeDeleteModal()"
+    >
+      <p class="confirm-text">
+        Supprimer <strong>{{ deleteTargetTicker }}</strong> de ce portefeuille ?
+        Cette action est irréversible.
+      </p>
+
+      <div slot="footer">
+        <button
+          type="button"
+          class="btn btn--secondary"
+          (click)="closeDeleteModal()"
+          [disabled]="deleteSubmitting()"
+        >
+          Annuler
+        </button>
+        <button
+          type="button"
+          class="btn btn--danger"
+          [disabled]="deleteSubmitting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleteSubmitting() ? 'Suppression…' : 'Supprimer' }}
+        </button>
+      </div>
+    </epi-modal>
 
     <!-- Modal de prix actuel -->
     <epi-modal
@@ -603,6 +644,31 @@ type PageState = 'loading' | 'loaded' | 'error';
       opacity: 1;
       color: var(--color-primary, #2D6A4F);
     }
+
+    .btn-esg--danger:hover {
+      color: var(--color-loss, #dc2626);
+    }
+
+    .btn--danger {
+      background: var(--color-loss, #dc2626);
+      color: #fff;
+      border: none;
+    }
+
+    .btn--danger:hover:not(:disabled) {
+      background: #b91c1c;
+    }
+
+    .holdings-table__actions {
+      width: 2rem;
+      text-align: center;
+    }
+
+    .confirm-text {
+      color: var(--color-text, #1A1A2E);
+      line-height: 1.6;
+      margin: 0;
+    }
   `],
 })
 export class PortfolioDetailPage implements OnInit {
@@ -628,6 +694,36 @@ export class PortfolioDetailPage implements OnInit {
     quantity:     new FormControl<number | null>(null, [Validators.required, Validators.min(0.0001)]),
     averagePrice: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
   });
+
+  // ─── Suppression ────────────────────────────────────────────────────────────
+  deleteModalOpen   = signal(false);
+  deleteSubmitting  = signal(false);
+  private deleteTargetId     = '';
+  deleteTargetTicker = '';
+
+  openDeleteModal(holding: Holding) {
+    this.deleteTargetId     = holding.id;
+    this.deleteTargetTicker = holding.asset.ticker;
+    this.deleteModalOpen.set(true);
+  }
+
+  closeDeleteModal() {
+    this.deleteModalOpen.set(false);
+  }
+
+  confirmDelete() {
+    this.deleteSubmitting.set(true);
+    this.holdingService.remove(this.deleteTargetId).subscribe({
+      next: () => {
+        this.deleteSubmitting.set(false);
+        this.deleteModalOpen.set(false);
+        this.loadData();
+      },
+      error: () => {
+        this.deleteSubmitting.set(false);
+      },
+    });
+  }
 
   // ─── Prix actuel ────────────────────────────────────────────────────────────
   priceModalOpen   = signal(false);

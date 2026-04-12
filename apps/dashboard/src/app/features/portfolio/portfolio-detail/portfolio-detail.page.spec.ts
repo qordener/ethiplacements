@@ -60,13 +60,13 @@ describe('PortfolioDetailPage', () => {
   let fixture: ComponentFixture<PortfolioDetailPage>;
   let component: PortfolioDetailPage;
   let mockService: { getPortfolioDetail: ReturnType<typeof vi.fn> };
-  let mockHoldingService: { create: ReturnType<typeof vi.fn> };
+  let mockHoldingService: { create: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> };
   let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; updatePrice: ReturnType<typeof vi.fn> };
   let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = { getPortfolioDetail: vi.fn() };
-    mockHoldingService = { create: vi.fn() };
+    mockHoldingService = { create: vi.fn(), remove: vi.fn() };
     mockAssetService = { findAll: vi.fn(), create: vi.fn(), updatePrice: vi.fn() };
     mockEsgScoreService = { create: vi.fn() };
 
@@ -304,6 +304,76 @@ describe('PortfolioDetailPage', () => {
     it('should have a table or list with accessible label for holdings', () => {
       const table = fixture.nativeElement.querySelector('[data-testid="holdings-table"]');
       expect(table).toBeTruthy();
+    });
+  });
+
+  // ─── Suppression d'un holding ────────────────────────────────────────────────
+
+  describe('suppression d\'un holding', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      mockAssetService.findAll.mockReturnValue(of([]));
+      fixture.detectChanges();
+    });
+
+    it('should display a delete button for each holding row', () => {
+      const btns = fixture.nativeElement.querySelectorAll('[data-testid="delete-holding-btn"]');
+      expect(btns).toHaveLength(2);
+    });
+
+    it('should open a confirmation modal when delete button is clicked', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="delete-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeTruthy();
+      expect(modal.textContent).toContain('BN');
+    });
+
+    it('should call HoldingService.remove when confirming deletion', () => {
+      mockHoldingService.remove = vi.fn().mockReturnValue(of(undefined));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="delete-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.confirmDelete();
+
+      expect(mockHoldingService.remove).toHaveBeenCalledWith('holding-1');
+    });
+
+    it('should reload data and close modal after successful deletion', () => {
+      mockHoldingService.remove = vi.fn().mockReturnValue(of(undefined));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="delete-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.confirmDelete();
+      fixture.detectChanges();
+
+      expect(mockService.getPortfolioDetail).toHaveBeenCalledTimes(2);
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeNull();
+    });
+
+    it('should not delete when cancelling the confirmation', () => {
+      mockHoldingService.remove = vi.fn();
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="delete-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      const closeBtn = fixture.nativeElement.querySelector('[data-testid="modal-close-btn"]');
+      closeBtn.click();
+      fixture.detectChanges();
+
+      expect(mockHoldingService.remove).not.toHaveBeenCalled();
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeNull();
     });
   });
 
