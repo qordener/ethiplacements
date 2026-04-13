@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 
 import { DashboardPage } from './dashboard.page';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
 
 const MOCK_PORTFOLIOS: PortfolioCardData[] = [
   { id: 'cuid-1', name: 'PEA Éthique',      description: 'Mon PEA ISR', totalValue: 11200, changePercent: 12,   esgScore: 75  }, // high
@@ -17,16 +18,19 @@ describe('DashboardPage', () => {
   let fixture: ComponentFixture<DashboardPage>;
   let component: DashboardPage;
   let mockDashboardService: { getPortfoliosWithSummary: ReturnType<typeof vi.fn> };
+  let mockPortfolioService: { removePortfolio: ReturnType<typeof vi.fn> };
   let router: Router;
 
   beforeEach(async () => {
     mockDashboardService = { getPortfoliosWithSummary: vi.fn() };
+    mockPortfolioService = { removePortfolio: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [DashboardPage],
       providers: [
         provideRouter([]),
         { provide: DashboardService, useValue: mockDashboardService },
+        { provide: PortfolioService, useValue: mockPortfolioService },
       ],
     }).compileComponents();
 
@@ -144,6 +148,89 @@ describe('DashboardPage', () => {
       fixture.detectChanges();
       component.onCardClick('cuid-1');
       expect(navigateSpy).toHaveBeenCalledWith(['/portfolio', 'cuid-1']);
+    });
+  });
+
+  describe('suppression de portefeuille', () => {
+    beforeEach(() => {
+      mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of(MOCK_PORTFOLIOS));
+      fixture.detectChanges();
+    });
+
+    it('should open a confirmation modal when deleteClick is emitted by a card', () => {
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="delete-portfolio-modal"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should display the portfolio name in the confirmation modal', () => {
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="delete-portfolio-modal"]');
+      expect(modal.textContent).toContain('PEA Éthique');
+    });
+
+    it('should close the modal without deleting when cancel is clicked', () => {
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      fixture.detectChanges();
+      component.closeDeleteModal();
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="delete-portfolio-modal"]');
+      expect(modal).toBeNull();
+      expect(mockPortfolioService.removePortfolio).not.toHaveBeenCalled();
+    });
+
+    it('should call removePortfolio with correct id on confirm', () => {
+      mockPortfolioService.removePortfolio.mockReturnValue(of(undefined));
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      fixture.detectChanges();
+      component.confirmDelete();
+      expect(mockPortfolioService.removePortfolio).toHaveBeenCalledWith('cuid-1');
+    });
+
+    it('should remove the portfolio from the list after successful deletion', () => {
+      mockPortfolioService.removePortfolio.mockReturnValue(of(undefined));
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      fixture.detectChanges();
+      component.confirmDelete();
+      fixture.detectChanges();
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(3);
+    });
+
+    it('should close the modal after successful deletion', () => {
+      mockPortfolioService.removePortfolio.mockReturnValue(of(undefined));
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      fixture.detectChanges();
+      component.confirmDelete();
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="delete-portfolio-modal"]');
+      expect(modal).toBeNull();
+    });
+
+    it('should show empty state when last portfolio is deleted', () => {
+      mockPortfolioService.removePortfolio.mockReturnValue(of(undefined));
+      // Réduire à 1 portfolio
+      component.portfolios.set([MOCK_PORTFOLIOS[0]]);
+      fixture.detectChanges();
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      component.confirmDelete();
+      fixture.detectChanges();
+      const empty = fixture.nativeElement.querySelector('[data-testid="dashboard-empty"]');
+      expect(empty).toBeTruthy();
+    });
+
+    it('should not remove portfolio on API error', () => {
+      mockPortfolioService.removePortfolio.mockReturnValue(
+        throwError(() => new Error('API error'))
+      );
+      component.openDeleteModal('cuid-1', 'PEA Éthique');
+      fixture.detectChanges();
+      component.confirmDelete();
+      fixture.detectChanges();
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-card"]');
+      expect(cards).toHaveLength(4);
     });
   });
 

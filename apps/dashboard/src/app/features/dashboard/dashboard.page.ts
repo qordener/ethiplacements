@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
 import { PortfolioCard } from '../../shared/components/portfolio-card/portfolio-card';
 
 type PageState = 'loading' | 'loaded' | 'empty' | 'error';
@@ -34,6 +35,23 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
         </div>
       }
       @case ('loaded') {
+        @if (deleteModalOpen()) {
+          <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+            <div data-testid="delete-portfolio-modal" class="modal">
+              <h2 id="delete-modal-title" class="modal__title">Supprimer ce portefeuille ?</h2>
+              <p class="modal__body">
+                Vous allez supprimer <strong>{{ deleteTargetName() }}</strong>. Cette action est irréversible.
+              </p>
+              <div class="modal__actions">
+                <button class="btn btn--ghost" (click)="closeDeleteModal()" [disabled]="deleteSubmitting()">Annuler</button>
+                <button class="btn btn--danger" (click)="confirmDelete()" [disabled]="deleteSubmitting()">
+                  @if (deleteSubmitting()) { Suppression… } @else { Supprimer }
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
         <div data-testid="esg-filter-bar" class="esg-filter-bar" role="group" aria-label="Filtrer par score ESG">
           @for (f of filters; track f.value) {
             <button
@@ -55,6 +73,7 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
               [changePercent]="portfolio.changePercent"
               [esgScore]="portfolio.esgScore"
               (cardClick)="onCardClick($event)"
+              (deleteClick)="openDeleteModal($event, portfolio.name)"
             />
           }
         </div>
@@ -106,6 +125,65 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
       color: var(--color-danger, #E76F51);
     }
 
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal {
+      background: #fff;
+      border-radius: var(--radius-md, 8px);
+      padding: var(--space-6, 24px);
+      max-width: 400px;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4, 16px);
+    }
+    .modal__title {
+      font-size: var(--text-lg, 1.125rem);
+      font-weight: 600;
+      color: var(--color-neutral-900, #1A1A2E);
+      margin: 0;
+    }
+    .modal__body {
+      color: var(--color-neutral-700, #3A3A5A);
+      font-size: var(--text-sm, 0.875rem);
+      margin: 0;
+    }
+    .modal__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-3, 12px);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: var(--space-2, 8px) var(--space-4, 16px);
+      border-radius: var(--radius-md, 8px);
+      font-size: var(--text-sm, 0.875rem);
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn--ghost {
+      background: transparent;
+      color: var(--color-neutral-600, #4A4A6A);
+      border: 1px solid var(--color-neutral-300, #C5C5D8);
+    }
+    .btn--ghost:hover:not(:disabled) { background: var(--color-neutral-100, #F8F9FA); }
+    .btn--danger {
+      background: var(--color-danger, #E76F51);
+      color: #fff;
+    }
+    .btn--danger:hover:not(:disabled) { background: #c9553a; }
+
     .esg-filter-bar {
       display: flex;
       gap: var(--space-2, 8px);
@@ -150,11 +228,17 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
 })
 export class DashboardPage implements OnInit {
   private readonly dashboardService = inject(DashboardService);
+  private readonly portfolioService = inject(PortfolioService);
   private readonly router = inject(Router);
 
   state = signal<PageState>('loading');
   portfolios = signal<PortfolioCardData[]>([]);
   esgFilter = signal<EsgFilter>('all');
+
+  deleteModalOpen = signal(false);
+  deleteSubmitting = signal(false);
+  deleteTargetId = signal<string>('');
+  deleteTargetName = signal<string>('');
 
   filteredPortfolios = computed(() => {
     const filter = this.esgFilter();
@@ -177,6 +261,31 @@ export class DashboardPage implements OnInit {
 
   setFilter(filter: EsgFilter) {
     this.esgFilter.set(filter);
+  }
+
+  openDeleteModal(id: string, name: string) {
+    this.deleteTargetId.set(id);
+    this.deleteTargetName.set(name);
+    this.deleteModalOpen.set(true);
+  }
+
+  closeDeleteModal() {
+    this.deleteModalOpen.set(false);
+  }
+
+  confirmDelete() {
+    this.deleteSubmitting.set(true);
+    this.portfolioService.removePortfolio(this.deleteTargetId()).subscribe({
+      next: () => {
+        this.portfolios.update(list => list.filter(p => p.id !== this.deleteTargetId()));
+        if (this.portfolios().length === 0) this.state.set('empty');
+        this.deleteModalOpen.set(false);
+        this.deleteSubmitting.set(false);
+      },
+      error: () => {
+        this.deleteSubmitting.set(false);
+      },
+    });
   }
 
   ngOnInit() {

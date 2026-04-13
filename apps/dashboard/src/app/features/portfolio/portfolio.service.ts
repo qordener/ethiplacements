@@ -25,4 +25,8 @@ export class PortfolioService {
       description: payload.description ?? null,
     });
   }
+
+  removePortfolio(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/portfolios/${id}`);
+  }
 }

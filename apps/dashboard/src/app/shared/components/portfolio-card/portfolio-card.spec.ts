@@ -228,6 +228,36 @@ describe('PortfolioCard', () => {
     });
   });
 
+  // ─── Suppression ─────────────────────────────────────────────────────────────
+
+  describe('suppression', () => {
+    it('should display a delete button', async () => {
+      await setup();
+      const btn = fixture.nativeElement.querySelector('[data-testid="btn-delete-portfolio"]');
+      expect(btn).toBeTruthy();
+    });
+
+    it('should emit deleteClick with portfolio id when delete button is clicked', async () => {
+      await setup({ id: 'cuid-42' });
+      const emitted: string[] = [];
+      component.deleteClick.subscribe((id: string) => emitted.push(id));
+
+      fixture.nativeElement.querySelector('[data-testid="btn-delete-portfolio"]').click();
+
+      expect(emitted).toEqual(['cuid-42']);
+    });
+
+    it('should NOT emit cardClick when delete button is clicked', async () => {
+      await setup({ id: 'cuid-1' });
+      const cardClicks: string[] = [];
+      component.cardClick.subscribe((id: string) => cardClicks.push(id));
+
+      fixture.nativeElement.querySelector('[data-testid="btn-delete-portfolio"]').click();
+
+      expect(cardClicks).toHaveLength(0);
+    });
+  });
+
   // ─── Accessibilité ───────────────────────────────────────────────────────────
 
   describe('accessibilité', () => {

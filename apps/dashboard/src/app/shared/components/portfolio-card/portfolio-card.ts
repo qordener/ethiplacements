@@ -20,11 +20,19 @@ export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutra
     >
       <div class="portfolio-card__header">
         <span data-testid="portfolio-name" class="portfolio-card__name">{{ name() }}</span>
-        <span
-          data-testid="portfolio-change"
-          class="portfolio-card__change"
-          [class]="changeClass()"
-        >{{ formattedChange() }}</span>
+        <div class="portfolio-card__header-actions">
+          <span
+            data-testid="portfolio-change"
+            class="portfolio-card__change"
+            [class]="changeClass()"
+          >{{ formattedChange() }}</span>
+          <button
+            data-testid="btn-delete-portfolio"
+            class="portfolio-card__delete-btn"
+            aria-label="Supprimer ce portefeuille"
+            (click)="onDeleteClick($event)"
+          >🗑</button>
+        </div>
       </div>
 
       <div class="portfolio-card__value">
@@ -60,6 +68,24 @@ export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutra
       justify-content: space-between;
       align-items: center;
       margin-bottom: var(--space-2, 8px);
+    }
+    .portfolio-card__header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2, 8px);
+    }
+    .portfolio-card__delete-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: var(--radius-sm, 4px);
+      font-size: var(--text-sm, 0.875rem);
+      opacity: 0.5;
+      transition: opacity 0.15s ease;
+    }
+    .portfolio-card__delete-btn:hover {
+      opacity: 1;
     }
     .portfolio-card__name {
       font-size: var(--text-lg, 1.25rem);
@@ -100,6 +126,7 @@ export class PortfolioCard {
   esgScore = input.required<number | null>();
 
   cardClick = output<string>();
+  deleteClick = output<string>();
 
   changeClass = computed<ChangeClass>(() => {
     const c = this.changePercent();
@@ -126,5 +153,10 @@ export class PortfolioCard {
 
   onClick() {
     this.cardClick.emit(this.id());
+  }
+
+  onDeleteClick(event: Event) {
+    event.stopPropagation();
+    this.deleteClick.emit(this.id());
   }
 }

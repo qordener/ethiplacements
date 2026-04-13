@@ -85,4 +85,27 @@ describe('PortfolioService', () => {
       });
     });
   });
+
+  describe('removePortfolio()', () => {
+    it('should DELETE /api/portfolios/:id', async () => {
+      const promise = firstValueFrom(service.removePortfolio('cuid-1'));
+
+      const req = httpMock.expectOne('/api/portfolios/cuid-1');
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      await promise;
+    });
+
+    it('should throw when portfolio does not exist (404)', async () => {
+      const promise = firstValueFrom(service.removePortfolio('nonexistent'));
+
+      httpMock.expectOne('/api/portfolios/nonexistent').flush('Not found', {
+        status: 404,
+        statusText: 'Not Found',
+      });
+
+      await expect(promise).rejects.toBeTruthy();
+    });
+  });
 });
