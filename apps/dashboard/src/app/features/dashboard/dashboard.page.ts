@@ -63,6 +63,11 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
             >{{ f.label }}</button>
           }
         </div>
+        @if (filteredPortfolios().length === 0) {
+          <p data-testid="filter-no-results" class="filter-no-results">
+            Aucun portefeuille ne correspond à ce filtre.
+          </p>
+        }
         <div class="dashboard-grid">
           @for (portfolio of filteredPortfolios(); track portfolio.id) {
             <app-portfolio-card
@@ -207,6 +212,13 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
       background: var(--color-primary, #2D6A4F);
       color: #fff;
       border-color: var(--color-primary, #2D6A4F);
+    }
+
+    .filter-no-results {
+      text-align: center;
+      padding: var(--space-8, 32px) var(--space-4, 16px);
+      color: var(--color-neutral-500, #6A6A8A);
+      font-size: var(--text-sm, 0.875rem);
     }
 
     .dashboard-grid {

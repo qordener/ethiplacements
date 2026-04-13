@@ -304,5 +304,29 @@ describe('DashboardPage', () => {
       const allBtn = fixture.nativeElement.querySelector('[data-testid="filter-all"]');
       expect(allBtn.getAttribute('aria-pressed')).toBe('false');
     });
+
+    it('should show a no-results message when the active filter matches no portfolio', () => {
+      // MOCK_PORTFOLIOS n'a aucun portefeuille avec esgScore entre 40 et 69 (cuid-3 = 55... si)
+      // On force un jeu sans portefeuille moyen
+      component.portfolios.set([MOCK_PORTFOLIOS[0], MOCK_PORTFOLIOS[1]]); // high + na seulement
+      component.setFilter('medium');
+      fixture.detectChanges();
+      const noResult = fixture.nativeElement.querySelector('[data-testid="filter-no-results"]');
+      expect(noResult).toBeTruthy();
+      expect(noResult.textContent.toLowerCase()).toContain('aucun');
+    });
+
+    it('should not show no-results message when filter matches at least one portfolio', () => {
+      component.setFilter('high');
+      fixture.detectChanges();
+      const noResult = fixture.nativeElement.querySelector('[data-testid="filter-no-results"]');
+      expect(noResult).toBeNull();
+    });
+
+    it('should not show no-results message when filter is "all" with portfolios', () => {
+      fixture.detectChanges();
+      const noResult = fixture.nativeElement.querySelector('[data-testid="filter-no-results"]');
+      expect(noResult).toBeNull();
+    });
   });
 });
