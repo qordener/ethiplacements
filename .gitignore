@@ -64,3 +64,5 @@ apps/api/generated/
 # Logs
 error.log
 *.log
+nextSteps.txt
+NEXT_STEPS.md
