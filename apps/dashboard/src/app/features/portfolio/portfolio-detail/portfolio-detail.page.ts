@@ -9,6 +9,7 @@ import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore } from '
 import { HoldingService } from '../holding.service';
 import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
+import { PortfolioService } from '../portfolio.service';
 import { MetricCard } from '../../../shared/components/metric-card/metric-card';
 import { ScoreBadge } from '../../../shared/components/score-badge/score-badge';
 import { Modal } from '../../../shared/components/modal/modal';
@@ -46,9 +47,18 @@ type PageState = 'loading' | 'loaded' | 'error';
         }
 
         @case ('loaded') {
-          <h1 data-testid="portfolio-name" class="portfolio-detail__title">
-            {{ data()!.portfolio.name }}
-          </h1>
+          <div class="portfolio-detail__header">
+            <h1 data-testid="portfolio-name" class="portfolio-detail__title">
+              {{ data()!.portfolio.name }}
+            </h1>
+            <button
+              data-testid="edit-portfolio-btn"
+              type="button"
+              class="btn-icon"
+              aria-label="Modifier le portefeuille"
+              (click)="openEditPortfolioModal()"
+            >✎</button>
+          </div>
 
           @if (data()!.portfolio.description) {
             <p data-testid="portfolio-description" class="portfolio-detail__description">
@@ -350,6 +360,61 @@ type PageState = 'loading' | 'loaded' | 'error';
       </div>
     </epi-modal>
 
+    <!-- Modal d'édition du portefeuille -->
+    <epi-modal
+      [open]="editPortfolioModalOpen()"
+      title="Modifier le portefeuille"
+      (closeRequest)="closeEditPortfolioModal()"
+    >
+      <form
+        id="edit-portfolio-form"
+        data-testid="edit-portfolio-modal"
+        [formGroup]="editPortfolioForm"
+        (ngSubmit)="confirmEditPortfolio()"
+        class="holding-form"
+      >
+        <epi-form-field label="Nom" for="edit-portfolio-name" [required]="true">
+          <input
+            id="edit-portfolio-name"
+            data-testid="edit-input-name"
+            type="text"
+            class="form-input"
+            formControlName="name"
+            placeholder="ex : PEA Éthique"
+          />
+        </epi-form-field>
+
+        <epi-form-field label="Description" for="edit-portfolio-description">
+          <textarea
+            id="edit-portfolio-description"
+            data-testid="edit-input-description"
+            class="form-input"
+            formControlName="description"
+            rows="3"
+            placeholder="ex : Mon portefeuille ISR long terme"
+          ></textarea>
+        </epi-form-field>
+      </form>
+
+      <div slot="footer">
+        <button
+          type="button"
+          class="btn btn--secondary"
+          (click)="closeEditPortfolioModal()"
+          [disabled]="editPortfolioSubmitting()"
+        >Annuler</button>
+        <button
+          data-testid="edit-portfolio-save-btn"
+          type="submit"
+          form="edit-portfolio-form"
+          class="btn btn--primary"
+          [disabled]="editPortfolioForm.invalid || editPortfolioSubmitting()"
+        >
+          {{ editPortfolioSubmitting() ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+      </div>
+    </epi-modal>
+
     <!-- Modal d'ajout de position -->
     <epi-modal
       [open]="modalOpen()"
@@ -516,11 +581,35 @@ type PageState = 'loading' | 'loaded' | 'error';
       text-decoration: underline;
     }
 
+    .portfolio-detail__header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3, 12px);
+      margin-bottom: var(--space-2, 8px);
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: var(--text-base, 1rem);
+      color: var(--color-text-muted, #4A4A6A);
+      opacity: 0.5;
+      padding: var(--space-1, 4px);
+      transition: opacity 0.15s ease, color 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .btn-icon:hover {
+      opacity: 1;
+      color: var(--color-primary, #2D6A4F);
+    }
+
     .portfolio-detail__title {
       font-size: var(--text-2xl, 1.5rem);
       font-weight: 700;
       color: var(--color-text, #1A1A2E);
-      margin-bottom: var(--space-2, 8px);
+      margin: 0;
     }
 
     .portfolio-detail__description {
@@ -798,6 +887,7 @@ export class PortfolioDetailPage implements OnInit {
   private readonly holdingService = inject(HoldingService);
   private readonly assetService = inject(AssetService);
   private readonly esgScoreService = inject(EsgScoreService);
+  private readonly portfolioService = inject(PortfolioService);
 
   readonly assetTypes: AssetType[] = ['STOCK', 'ETF', 'BOND', 'CRYPTO', 'OTHER'];
 
@@ -872,6 +962,48 @@ export class PortfolioDetailPage implements OnInit {
       a.ticker.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)
     ).slice(0, 8);
   });
+
+  // ─── Édition du portefeuille ────────────────────────────────────────────────
+  editPortfolioModalOpen  = signal(false);
+  editPortfolioSubmitting = signal(false);
+
+  editPortfolioForm = new FormGroup({
+    name:        new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    description: new FormControl('', { nonNullable: true }),
+  });
+
+  openEditPortfolioModal() {
+    const portfolio = this.data()?.portfolio;
+    if (!portfolio) return;
+    this.editPortfolioForm.setValue({
+      name:        portfolio.name,
+      description: portfolio.description ?? '',
+    });
+    this.editPortfolioModalOpen.set(true);
+  }
+
+  closeEditPortfolioModal() {
+    this.editPortfolioModalOpen.set(false);
+  }
+
+  confirmEditPortfolio() {
+    if (this.editPortfolioForm.invalid) return;
+    this.editPortfolioSubmitting.set(true);
+    const description = this.editPortfolioForm.controls['description'].value.trim() || null;
+    this.portfolioService.updatePortfolio(this.portfolioId, {
+      name: this.editPortfolioForm.controls['name'].value.trim(),
+      description,
+    }).subscribe({
+      next: () => {
+        this.editPortfolioModalOpen.set(false);
+        this.editPortfolioSubmitting.set(false);
+        this.loadData();
+      },
+      error: () => {
+        this.editPortfolioSubmitting.set(false);
+      },
+    });
+  }
 
   // ─── Suppression ────────────────────────────────────────────────────────────
   deleteModalOpen   = signal(false);

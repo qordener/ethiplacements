@@ -9,6 +9,7 @@ import { PortfolioDetailService, PortfolioDetailData } from '../portfolio-detail
 import { HoldingService } from '../holding.service';
 import { AssetService } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
+import { PortfolioService } from '../portfolio.service';
 
 const MOCK_DETAIL: PortfolioDetailData = {
   portfolio: {
@@ -63,12 +64,14 @@ describe('PortfolioDetailPage', () => {
   let mockHoldingService: { create: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> };
   let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; updatePrice: ReturnType<typeof vi.fn> };
   let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
+  let mockPortfolioService: { updatePortfolio: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = { getPortfolioDetail: vi.fn() };
     mockHoldingService = { create: vi.fn(), remove: vi.fn() };
     mockAssetService = { findAll: vi.fn(), create: vi.fn(), updatePrice: vi.fn() };
     mockEsgScoreService = { create: vi.fn() };
+    mockPortfolioService = { updatePortfolio: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [PortfolioDetailPage],
@@ -78,6 +81,7 @@ describe('PortfolioDetailPage', () => {
         { provide: HoldingService, useValue: mockHoldingService },
         { provide: AssetService, useValue: mockAssetService },
         { provide: EsgScoreService, useValue: mockEsgScoreService },
+        { provide: PortfolioService, useValue: mockPortfolioService },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'cuid-1' } } },
@@ -530,6 +534,105 @@ describe('PortfolioDetailPage', () => {
       expect(mockService.getPortfolioDetail).toHaveBeenCalledTimes(2);
       const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
       expect(modal).toBeNull();
+    });
+  });
+
+  // ─── Édition du portefeuille ─────────────────────────────────────────────────
+
+  describe('édition du portefeuille', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+    });
+
+    it('should display an edit button in the loaded state', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]');
+      expect(btn).toBeTruthy();
+    });
+
+    it('should open the edit modal when the edit button is clicked', () => {
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-modal"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should pre-fill the name field with the current portfolio name', () => {
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      const input = fixture.nativeElement.querySelector('[data-testid="edit-input-name"]');
+      expect(input.value).toBe('Mon PEA');
+    });
+
+    it('should pre-fill the description field with the current portfolio description', () => {
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      const textarea = fixture.nativeElement.querySelector('[data-testid="edit-input-description"]');
+      expect(textarea.value).toBe('Portefeuille ISR');
+    });
+
+    it('should close the modal without saving when cancel is clicked', () => {
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      component.closeEditPortfolioModal();
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-modal"]');
+      expect(modal).toBeNull();
+      expect(mockPortfolioService.updatePortfolio).not.toHaveBeenCalled();
+    });
+
+    it('should call updatePortfolio with the edited values on save', () => {
+      mockPortfolioService.updatePortfolio.mockReturnValue(
+        of({ ...MOCK_DETAIL.portfolio, name: 'PEA Modifié', description: null })
+      );
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      component.editPortfolioForm.controls['name'].setValue('PEA Modifié');
+      component.editPortfolioForm.controls['description'].setValue('');
+      component.confirmEditPortfolio();
+      expect(mockPortfolioService.updatePortfolio).toHaveBeenCalledWith('cuid-1', {
+        name: 'PEA Modifié',
+        description: null,
+      });
+    });
+
+    it('should update the displayed name after successful edit', () => {
+      mockPortfolioService.updatePortfolio.mockReturnValue(
+        of({ ...MOCK_DETAIL.portfolio, name: 'PEA Renommé', description: null })
+      );
+      mockService.getPortfolioDetail.mockReturnValue(
+        of({ ...MOCK_DETAIL, portfolio: { ...MOCK_DETAIL.portfolio, name: 'PEA Renommé', description: null } })
+      );
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      component.editPortfolioForm.controls['name'].setValue('PEA Renommé');
+      component.editPortfolioForm.controls['description'].setValue('');
+      component.confirmEditPortfolio();
+      fixture.detectChanges();
+      const title = fixture.nativeElement.querySelector('[data-testid="portfolio-name"]');
+      expect(title.textContent).toContain('PEA Renommé');
+    });
+
+    it('should close the modal after successful edit', () => {
+      mockPortfolioService.updatePortfolio.mockReturnValue(
+        of({ ...MOCK_DETAIL.portfolio, name: 'PEA Renommé' })
+      );
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      component.confirmEditPortfolio();
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-modal"]');
+      expect(modal).toBeNull();
+    });
+
+    it('should disable the save button when name is empty', () => {
+      fixture.nativeElement.querySelector('[data-testid="edit-portfolio-btn"]').click();
+      fixture.detectChanges();
+      component.editPortfolioForm.controls['name'].setValue('');
+      fixture.detectChanges();
+      const btn = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-save-btn"]');
+      expect(btn.disabled).toBe(true);
     });
   });
 
