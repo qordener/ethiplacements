@@ -114,6 +114,36 @@ describe('MetricCard', () => {
     });
   });
 
+  // ─── Tooltip pédagogique ─────────────────────────────────────────────────────
+
+  describe('tooltip', () => {
+    it('should not display a tooltip trigger when tooltip is not provided', async () => {
+      await setup();
+      const trigger = fixture.nativeElement.querySelector('[data-testid="info-trigger"]');
+      expect(trigger).toBeNull();
+    });
+
+    it('should display a tooltip trigger when tooltip text is provided', async () => {
+      await setup();
+      fixture.componentRef.setInput('tooltip', 'Explication de la métrique.');
+      fixture.detectChanges();
+      const trigger = fixture.nativeElement.querySelector('[data-testid="info-trigger"]');
+      expect(trigger).toBeTruthy();
+    });
+
+    it('should show the tooltip panel when trigger is clicked', async () => {
+      await setup();
+      fixture.componentRef.setInput('tooltip', 'Explication de la métrique.');
+      fixture.detectChanges();
+      const trigger = fixture.nativeElement.querySelector('[data-testid="info-trigger"]');
+      trigger.click();
+      fixture.detectChanges();
+      const panel = fixture.nativeElement.querySelector('[data-testid="info-tooltip"]');
+      expect(panel).toBeTruthy();
+      expect(panel.textContent).toContain('Explication de la métrique.');
+    });
+  });
+
   // ─── Accessibilité ────────────────────────────────────────────────────────────
 
   describe('accessibilité', () => {

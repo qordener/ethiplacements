@@ -1,11 +1,18 @@
 import { Component, input } from '@angular/core';
+import { InfoTooltip } from '../info-tooltip/info-tooltip';
 
 @Component({
   selector: 'epi-metric-card',
   standalone: true,
+  imports: [InfoTooltip],
   template: `
     <div data-testid="metric-card" class="metric-card">
-      <span data-testid="metric-label" class="metric-card__label">{{ label() }}</span>
+      <span class="metric-card__label-row">
+        <span data-testid="metric-label" class="metric-card__label">{{ label() }}</span>
+        @if (tooltip()) {
+          <app-info-tooltip [text]="tooltip()!" />
+        }
+      </span>
 
       <span
         data-testid="metric-value"
@@ -36,6 +43,12 @@ import { Component, input } from '@angular/core';
       padding: var(--space-4, 16px);
       display: flex;
       flex-direction: column;
+      gap: var(--space-1, 4px);
+    }
+
+    .metric-card__label-row {
+      display: flex;
+      align-items: center;
       gap: var(--space-1, 4px);
     }
 
@@ -75,4 +88,5 @@ export class MetricCard {
   value    = input.required<string | number>();
   trend    = input<'positive' | 'negative' | 'neutral' | null>(null);
   sublabel = input<string | null>(null);
+  tooltip  = input<string | null>(null);
 }

@@ -72,22 +72,26 @@ type PageState = 'loading' | 'loaded' | 'error';
               data-testid="total-invested"
               label="Investi"
               [value]="(data()!.summary.totalInvested | number:'1.2-2') + ' €'"
+              tooltip="Montant total versé pour acquérir vos positions, calculé à partir de vos prix moyens d'achat multipliés par les quantités."
             />
             <epi-metric-card
               data-testid="current-value"
               label="Valeur actuelle"
               [value]="(data()!.summary.currentValue | number:'1.2-2') + ' €'"
+              tooltip="Valeur de votre portefeuille aux prix actuels. Si le prix d'un actif n'a pas été mis à jour manuellement, le prix d'achat moyen est utilisé à la place."
             />
             <epi-metric-card
               data-testid="latent-gain-pct"
               label="Performance"
               [value]="(data()!.summary.latentGainPct | number:'1.2-2') + ' %'"
               [trend]="data()!.summary.latentGainPct >= 0 ? 'positive' : 'negative'"
+              tooltip="Variation de valeur depuis vos achats : (valeur actuelle − montant investi) ÷ montant investi × 100. Positif = plus-value latente, négatif = moins-value."
             />
             <epi-metric-card
               data-testid="esg-score"
               label="Score ESG"
               [value]="formatEsgScore(data()!.summary.esgScoreWeighted)"
+              tooltip="Score Environnemental, Social et de Gouvernance pondéré par la valeur de chaque position (0 = très mauvais, 100 = exemplaire). Les positions sans score ne sont pas comptabilisées."
             />
           </section>
 
