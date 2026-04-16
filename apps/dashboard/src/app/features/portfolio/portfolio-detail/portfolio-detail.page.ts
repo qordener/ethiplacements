@@ -3,6 +3,7 @@ import { DecimalPipe } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore } from '../portfolio-detail.service';
 import { HoldingService } from '../holding.service';
@@ -367,15 +368,41 @@ type PageState = 'loading' | 'loaded' | 'error';
           [required]="true"
           [error]="tickerError()"
         >
-          <input
-            id="holding-ticker"
-            data-testid="input-ticker"
-            type="text"
-            class="form-input"
-            formControlName="ticker"
-            placeholder="ex : CW8, AAPL"
-            autocomplete="off"
-          />
+          <div class="ticker-wrapper">
+            <input
+              id="holding-ticker"
+              data-testid="input-ticker"
+              type="text"
+              class="form-input"
+              formControlName="ticker"
+              placeholder="ex : CW8, AAPL"
+              autocomplete="off"
+              (focus)="onTickerFocus()"
+              (blur)="onTickerBlur()"
+            />
+            @if (showSuggestions() && tickerSuggestions().length > 0) {
+              <ul
+                data-testid="ticker-suggestions"
+                class="ticker-suggestions"
+                (mousedown)="$event.preventDefault()"
+              >
+                @for (asset of tickerSuggestions(); track asset.id) {
+                  <li>
+                    <button
+                      data-testid="ticker-suggestion-item"
+                      type="button"
+                      class="ticker-suggestion"
+                      (click)="selectSuggestion(asset)"
+                    >
+                      <span class="ticker-suggestion__ticker">{{ asset.ticker }}</span>
+                      <span class="ticker-suggestion__name">{{ asset.name }}</span>
+                      <span class="ticker-suggestion__type">{{ asset.type }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
         </epi-form-field>
 
         <epi-form-field
@@ -619,6 +646,68 @@ type PageState = 'loading' | 'loaded' | 'error';
       gap: var(--space-4, 16px);
     }
 
+    .ticker-wrapper {
+      position: relative;
+    }
+
+    .ticker-suggestions {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: #fff;
+      border: 1px solid var(--color-border, #E8E8F0);
+      border-radius: var(--radius-md, 8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      list-style: none;
+      margin: 0;
+      padding: var(--space-1, 4px) 0;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .ticker-suggestion {
+      display: grid;
+      grid-template-columns: 4rem 1fr auto;
+      align-items: center;
+      gap: var(--space-2, 8px);
+      width: 100%;
+      padding: var(--space-2, 8px) var(--space-3, 12px);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: left;
+      font-size: var(--text-sm, 0.875rem);
+      color: var(--color-text, #1A1A2E);
+      transition: background 0.1s ease;
+    }
+
+    .ticker-suggestion:hover {
+      background: var(--color-surface-alt, #F0F0F8);
+    }
+
+    .ticker-suggestion__ticker {
+      font-weight: 700;
+      font-family: var(--font-mono, monospace);
+      color: var(--color-primary, #2D6A4F);
+    }
+
+    .ticker-suggestion__name {
+      color: var(--color-text-muted, #4A4A6A);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ticker-suggestion__type {
+      font-size: var(--text-xs, 0.75rem);
+      color: var(--color-text-subtle, #6A6A8A);
+      background: var(--color-surface-alt, #F0F0F8);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm, 4px);
+    }
+
     .form-input,
     .form-select {
       width: 100%;
@@ -768,6 +857,22 @@ export class PortfolioDetailPage implements OnInit {
     averagePrice: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
   });
 
+  showSuggestions = signal(false);
+
+  private readonly tickerValue = toSignal(
+    this.holdingForm.controls['ticker'].valueChanges,
+    { initialValue: '' }
+  );
+
+  readonly tickerSuggestions = computed(() => {
+    const query = (this.tickerValue() ?? '').trim();
+    if (query.length < 1) return [];
+    const q = query.toLowerCase();
+    return this.assets().filter(a =>
+      a.ticker.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)
+    ).slice(0, 8);
+  });
+
   // ─── Suppression ────────────────────────────────────────────────────────────
   deleteModalOpen   = signal(false);
   deleteSubmitting  = signal(false);
@@ -834,6 +939,18 @@ export class PortfolioDetailPage implements OnInit {
     this.portfolioId = this.route.snapshot.paramMap.get('id')!;
     this.loadData();
   }
+
+  selectSuggestion(asset: AssetItem) {
+    this.holdingForm.patchValue({
+      ticker:    asset.ticker,
+      assetName: asset.name,
+      assetType: asset.type as AssetType,
+    });
+    this.showSuggestions.set(false);
+  }
+
+  onTickerFocus() { this.showSuggestions.set(true); }
+  onTickerBlur()  { setTimeout(() => this.showSuggestions.set(false), 150); }
 
   openAddHolding() {
     this.modalOpen.set(true);

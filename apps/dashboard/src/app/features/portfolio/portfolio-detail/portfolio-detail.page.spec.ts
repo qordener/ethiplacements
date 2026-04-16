@@ -716,5 +716,91 @@ describe('PortfolioDetailPage', () => {
       const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
       expect(modal).toBeNull();
     });
+
+    describe('autocomplétion du ticker', () => {
+      const ASSETS = [
+        { id: 'a1', name: 'Danone', ticker: 'BN',   type: 'STOCK', manualPrice: null, esgScores: [] },
+        { id: 'a2', name: 'BNP Paribas', ticker: 'BNP', type: 'STOCK', manualPrice: null, esgScores: [] },
+        { id: 'a3', name: 'Amundi World SRI', ticker: 'CW8', type: 'ETF', manualPrice: null, esgScores: [] },
+      ];
+
+      beforeEach(() => {
+        mockAssetService.findAll.mockReturnValue(of(ASSETS));
+        const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+        btn.click();
+        fixture.detectChanges();
+      });
+
+      it('should show suggestions when ticker input matches existing assets', () => {
+        component.holdingForm.controls['ticker'].setValue('BN');
+        component.showSuggestions.set(true);
+        fixture.detectChanges();
+        const list = fixture.nativeElement.querySelector('[data-testid="ticker-suggestions"]');
+        expect(list).toBeTruthy();
+        const items = fixture.nativeElement.querySelectorAll('[data-testid="ticker-suggestion-item"]');
+        expect(items.length).toBeGreaterThanOrEqual(1);
+      });
+
+      it('should match on ticker prefix (case-insensitive)', () => {
+        component.holdingForm.controls['ticker'].setValue('bn');
+        component.showSuggestions.set(true);
+        fixture.detectChanges();
+        const items = fixture.nativeElement.querySelectorAll('[data-testid="ticker-suggestion-item"]');
+        // BN et BNP commencent par "bn"
+        expect(items).toHaveLength(2);
+      });
+
+      it('should match on asset name (case-insensitive)', () => {
+        component.holdingForm.controls['ticker'].setValue('amundi');
+        component.showSuggestions.set(true);
+        fixture.detectChanges();
+        const items = fixture.nativeElement.querySelectorAll('[data-testid="ticker-suggestion-item"]');
+        expect(items).toHaveLength(1);
+        expect(items[0].textContent).toContain('CW8');
+      });
+
+      it('should not show suggestions when ticker is empty', () => {
+        component.holdingForm.controls['ticker'].setValue('');
+        component.showSuggestions.set(true);
+        fixture.detectChanges();
+        const list = fixture.nativeElement.querySelector('[data-testid="ticker-suggestions"]');
+        expect(list).toBeNull();
+      });
+
+      it('should not show suggestions when no asset matches', () => {
+        component.holdingForm.controls['ticker'].setValue('ZZZZ');
+        component.showSuggestions.set(true);
+        fixture.detectChanges();
+        const list = fixture.nativeElement.querySelector('[data-testid="ticker-suggestions"]');
+        expect(list).toBeNull();
+      });
+
+      it('should fill assetName and assetType when a suggestion is selected', () => {
+        component.selectSuggestion(ASSETS[2]);
+        fixture.detectChanges();
+        expect(component.holdingForm.value.ticker).toBe('CW8');
+        expect(component.holdingForm.value.assetName).toBe('Amundi World SRI');
+        expect(component.holdingForm.value.assetType).toBe('ETF');
+      });
+
+      it('should hide suggestions after selecting one', () => {
+        component.holdingForm.controls['ticker'].setValue('BN');
+        component.showSuggestions.set(true);
+        fixture.detectChanges();
+        component.selectSuggestion(ASSETS[0]);
+        fixture.detectChanges();
+        const list = fixture.nativeElement.querySelector('[data-testid="ticker-suggestions"]');
+        expect(list).toBeNull();
+      });
+
+      it('should display ticker and name in each suggestion item', () => {
+        component.holdingForm.controls['ticker'].setValue('BN');
+        component.showSuggestions.set(true);
+        fixture.detectChanges();
+        const items = fixture.nativeElement.querySelectorAll('[data-testid="ticker-suggestion-item"]');
+        expect(items[0].textContent).toContain('BN');
+        expect(items[0].textContent).toContain('Danone');
+      });
+    });
   });
 });
