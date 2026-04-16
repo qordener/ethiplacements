@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -12,13 +12,14 @@ import { MetricCard } from '../../../shared/components/metric-card/metric-card';
 import { ScoreBadge } from '../../../shared/components/score-badge/score-badge';
 import { Modal } from '../../../shared/components/modal/modal';
 import { FormField } from '../../../shared/components/form-field/form-field';
+import { DonutChart, DonutSegment } from '../../../shared/components/donut-chart/donut-chart';
 
 type PageState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-portfolio-detail-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField],
+  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart],
   template: `
     <div class="portfolio-detail">
 
@@ -76,6 +77,20 @@ type PageState = 'loading' | 'loaded' | 'error';
               [value]="formatEsgScore(data()!.summary.esgScoreWeighted)"
             />
           </section>
+
+          @if (allocationSegments().length > 0) {
+            <section
+              data-testid="allocation-chart-section"
+              class="portfolio-detail__allocation"
+              aria-label="Répartition par type d'actif"
+            >
+              <h2 class="portfolio-detail__section-title">Répartition</h2>
+              <epi-donut-chart
+                [segments]="allocationSegments()"
+                ariaLabel="Répartition par type d'actif"
+              />
+            </section>
+          }
 
           <section class="portfolio-detail__holdings" aria-label="Positions">
             <div class="portfolio-detail__section-header">
@@ -493,6 +508,10 @@ type PageState = 'loading' | 'loaded' | 'error';
       margin-bottom: var(--space-8, 32px);
     }
 
+    .portfolio-detail__allocation {
+      margin-bottom: var(--space-8, 32px);
+    }
+
     .portfolio-detail__section-header {
       display: flex;
       align-items: center;
@@ -680,8 +699,37 @@ export class PortfolioDetailPage implements OnInit {
 
   readonly assetTypes: AssetType[] = ['STOCK', 'ETF', 'BOND', 'CRYPTO', 'OTHER'];
 
+  private readonly ASSET_TYPE_COLORS: Record<string, string> = {
+    STOCK:  '#2D6A4F',
+    ETF:    '#52B788',
+    BOND:   '#40916C',
+    CRYPTO: '#F4A261',
+    OTHER:  '#ADB5BD',
+  };
+
+  private readonly ASSET_TYPE_LABELS: Record<string, string> = {
+    STOCK:  'Actions',
+    ETF:    'ETF',
+    BOND:   'Obligations',
+    CRYPTO: 'Crypto',
+    OTHER:  'Autres',
+  };
+
   state      = signal<PageState>('loading');
   data       = signal<PortfolioDetailData | null>(null);
+
+  readonly allocationSegments = computed<DonutSegment[]>(() => {
+    const summary = this.data()?.summary;
+    if (!summary) return [];
+    const allocation = summary.allocationByType ?? {};
+    return Object.entries(allocation)
+      .filter(([, pct]) => pct > 0)
+      .map(([type, pct]) => ({
+        label: this.ASSET_TYPE_LABELS[type] ?? type,
+        value: pct,
+        color: this.ASSET_TYPE_COLORS[type] ?? '#ADB5BD',
+      }));
+  });
   modalOpen  = signal(false);
   assets     = signal<AssetItem[]>([]);
   submitting = signal(false);

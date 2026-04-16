@@ -533,6 +533,35 @@ describe('PortfolioDetailPage', () => {
     });
   });
 
+  // ─── Graphique de répartition ────────────────────────────────────────────────
+
+  describe('graphique de répartition', () => {
+    it('should display the allocation chart when holdings exist', () => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+      const section = fixture.nativeElement.querySelector('[data-testid="allocation-chart-section"]');
+      expect(section).toBeTruthy();
+    });
+
+    it('should not display the allocation chart when there are no holdings', () => {
+      mockService.getPortfolioDetail.mockReturnValue(
+        of({ ...MOCK_DETAIL, portfolio: { ...MOCK_DETAIL.portfolio, holdings: [] },
+             summary: { ...MOCK_DETAIL.summary, allocationByType: {} } })
+      );
+      fixture.detectChanges();
+      const section = fixture.nativeElement.querySelector('[data-testid="allocation-chart-section"]');
+      expect(section).toBeNull();
+    });
+
+    it('should render one donut slice per asset type in allocationByType', () => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+      const slices = fixture.nativeElement.querySelectorAll('[data-testid="donut-slice"]');
+      const typeCount = Object.keys(MOCK_DETAIL.summary.allocationByType).length;
+      expect(slices).toHaveLength(typeCount);
+    });
+  });
+
   // ─── Ajout de position ───────────────────────────────────────────────────────
 
   describe('ajout de position', () => {
