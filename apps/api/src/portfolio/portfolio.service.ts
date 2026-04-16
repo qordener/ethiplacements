@@ -55,7 +55,15 @@ export class PortfolioService {
       include: {
         holdings: {
           include: {
-            asset: { include: { esgScores: true } },
+            asset: {
+              include: {
+                esgScores: true,
+                priceSnapshots: {
+                  orderBy: { fetchedAt: 'desc' },
+                  take: 1,
+                },
+              },
+            },
           },
         },
       },
@@ -78,7 +86,9 @@ export class PortfolioService {
 
     for (const holding of activeHoldings) {
       const invested = holding.quantity * holding.averagePrice;
-      const price = holding.asset.manualPrice ?? holding.averagePrice;
+      // Priorité : dernier snapshot fetché > prix manuel > prix d'achat moyen
+      const latestSnapshot = holding.asset.priceSnapshots[0];
+      const price = latestSnapshot?.price ?? holding.asset.manualPrice ?? holding.averagePrice;
       const value = holding.quantity * price;
 
       totalInvested += invested;

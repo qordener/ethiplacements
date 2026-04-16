@@ -37,9 +37,9 @@ model Portfolio {
 }
 
 model Asset {
-  id               String     @id @default(cuid())
+  id               String          @id @default(cuid())
   name             String
-  ticker           String     @unique
+  ticker           String          @unique
   isin             String?
   type             AssetType
   sector           String?
@@ -47,6 +47,19 @@ model Asset {
   manualPriceDate  DateTime?
   holdings         Holding[]
   esgScores        EsgScore[]
+  priceSnapshots   PriceSnapshot[]
+}
+
+model PriceSnapshot {
+  id        String   @id @default(cuid())
+  assetId   String
+  price     Float
+  currency  String   @default("EUR")
+  source    String   @default("yahoo")
+  fetchedAt DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, fetchedAt])
 }
 
 model Holding {

@@ -60,11 +60,11 @@ describe('PortfolioService.getSummary', () => {
       holdings: [
         {
           id: 'h1', quantity: 10, averagePrice: 100,
-          asset: { type: 'ETF', manualPrice: null, esgScores: [] },
+          asset: { type: 'ETF', manualPrice: null, esgScores: [], priceSnapshots: [] },
         },
         {
           id: 'h2', quantity: 5, averagePrice: 30000,
-          asset: { type: 'CRYPTO', manualPrice: null, esgScores: [] },
+          asset: { type: 'CRYPTO', manualPrice: null, esgScores: [], priceSnapshots: [] },
         },
       ],
     });
@@ -83,11 +83,11 @@ describe('PortfolioService.getSummary', () => {
       holdings: [
         {
           id: 'h1', quantity: 10, averagePrice: 100,
-          asset: { type: 'ETF', manualPrice: 110, esgScores: [] },
+          asset: { type: 'ETF', manualPrice: 110, esgScores: [], priceSnapshots: [] },
         },
         {
           id: 'h2', quantity: 5, averagePrice: 200,
-          asset: { type: 'STOCK', manualPrice: null, esgScores: [] },
+          asset: { type: 'STOCK', manualPrice: null, esgScores: [], priceSnapshots: [] },
         },
       ],
     });
@@ -100,6 +100,69 @@ describe('PortfolioService.getSummary', () => {
     expect(summary.latentGainPct).toBeCloseTo(5, 1); // 100/2000 * 100 = 5%
   });
 
+  // ─── Priorité des prix ────────────────────────────────────────────────────
+
+  it('should prefer priceSnapshot over manualPrice and averagePrice', async () => {
+    // snapshot = 120, manualPrice = 110, averagePrice = 100
+    // currentValue = 10 * 120 = 1200
+    mockPrisma.portfolio.findUnique.mockResolvedValue({
+      id: 'p1',
+      name: 'Test',
+      holdings: [
+        {
+          id: 'h1', quantity: 10, averagePrice: 100,
+          asset: {
+            type: 'ETF', manualPrice: 110, esgScores: [],
+            priceSnapshots: [{ price: 120, currency: 'EUR', fetchedAt: new Date() }],
+          },
+        },
+      ],
+    });
+
+    const summary = await service.getSummary('p1');
+
+    expect(summary.currentValue).toBe(1200);
+    expect(summary.totalInvested).toBe(1000);
+    expect(summary.latentGain).toBe(200);
+  });
+
+  it('should fall back to manualPrice when no snapshot exists', async () => {
+    mockPrisma.portfolio.findUnique.mockResolvedValue({
+      id: 'p1',
+      name: 'Test',
+      holdings: [
+        {
+          id: 'h1', quantity: 10, averagePrice: 100,
+          asset: { type: 'ETF', manualPrice: 110, esgScores: [], priceSnapshots: [] },
+        },
+      ],
+    });
+
+    const summary = await service.getSummary('p1');
+
+    expect(summary.currentValue).toBe(1100); // 10 * 110
+  });
+
+  it('should fall back to averagePrice when neither snapshot nor manualPrice exists', async () => {
+    mockPrisma.portfolio.findUnique.mockResolvedValue({
+      id: 'p1',
+      name: 'Test',
+      holdings: [
+        {
+          id: 'h1', quantity: 10, averagePrice: 100,
+          asset: { type: 'ETF', manualPrice: null, esgScores: [], priceSnapshots: [] },
+        },
+      ],
+    });
+
+    const summary = await service.getSummary('p1');
+
+    expect(summary.currentValue).toBe(1000); // 10 * 100
+    expect(summary.latentGain).toBe(0);
+  });
+
+  // ─── ESG ─────────────────────────────────────────────────────────────────
+
   it('should calculate weighted ESG score based on investment weight', async () => {
     // h1 : 1000 € investi, score ESG 80 → poids 50%
     // h2 : 1000 € investi, score ESG 60 → poids 50%
@@ -111,7 +174,7 @@ describe('PortfolioService.getSummary', () => {
         {
           id: 'h1', quantity: 10, averagePrice: 100,
           asset: {
-            type: 'ETF', manualPrice: null,
+            type: 'ETF', manualPrice: null, priceSnapshots: [],
             esgScores: [
               { score: 80, date: new Date('2024-03-01') },
               { score: 70, date: new Date('2024-01-01') }, // plus ancien, ignoré
@@ -121,7 +184,7 @@ describe('PortfolioService.getSummary', () => {
         {
           id: 'h2', quantity: 20, averagePrice: 50,
           asset: {
-            type: 'BOND', manualPrice: null,
+            type: 'BOND', manualPrice: null, priceSnapshots: [],
             esgScores: [{ score: 60, date: new Date('2024-02-01') }],
           },
         },
@@ -141,7 +204,7 @@ describe('PortfolioService.getSummary', () => {
       holdings: [
         {
           id: 'h1', quantity: 10, averagePrice: 100,
-          asset: { type: 'ETF', manualPrice: null, esgScores: [] },
+          asset: { type: 'ETF', manualPrice: null, esgScores: [], priceSnapshots: [] },
         },
       ],
     });
@@ -159,11 +222,11 @@ describe('PortfolioService.getSummary', () => {
       holdings: [
         {
           id: 'h1', quantity: 10, averagePrice: 100,
-          asset: { type: 'ETF', manualPrice: null, esgScores: [] },
+          asset: { type: 'ETF', manualPrice: null, esgScores: [], priceSnapshots: [] },
         },
         {
           id: 'h2', quantity: 5, averagePrice: 200,
-          asset: { type: 'CRYPTO', manualPrice: null, esgScores: [] },
+          asset: { type: 'CRYPTO', manualPrice: null, esgScores: [], priceSnapshots: [] },
         },
       ],
     });
@@ -181,11 +244,11 @@ describe('PortfolioService.getSummary', () => {
       holdings: [
         {
           id: 'h1', quantity: 10, averagePrice: 100,
-          asset: { type: 'ETF', manualPrice: null, esgScores: [{ score: 75, date: new Date() }] },
+          asset: { type: 'ETF', manualPrice: null, esgScores: [{ score: 75, date: new Date() }], priceSnapshots: [] },
         },
         {
           id: 'h2', quantity: 0, averagePrice: 200, // position clôturée
-          asset: { type: 'STOCK', manualPrice: null, esgScores: [{ score: 30, date: new Date() }] },
+          asset: { type: 'STOCK', manualPrice: null, esgScores: [{ score: 30, date: new Date() }], priceSnapshots: [] },
         },
       ],
     });
