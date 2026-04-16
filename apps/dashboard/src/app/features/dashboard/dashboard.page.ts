@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
 import { PortfolioCard } from '../../shared/components/portfolio-card/portfolio-card';
@@ -10,7 +11,7 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
-  imports: [PortfolioCard, RouterLink],
+  imports: [PortfolioCard, RouterLink, ReactiveFormsModule],
   template: `
     @switch (state()) {
       @case ('loading') {
@@ -35,6 +36,45 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
         </div>
       }
       @case ('loaded') {
+        @if (editModalOpen()) {
+          <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+            <div data-testid="edit-portfolio-modal" class="modal" [formGroup]="editForm">
+              <h2 id="edit-modal-title" class="modal__title">Modifier le portefeuille</h2>
+              <div class="modal-form-field">
+                <label for="edit-portfolio-name" class="modal-form-label">Nom *</label>
+                <input
+                  id="edit-portfolio-name"
+                  data-testid="edit-input-name"
+                  type="text"
+                  class="modal-form-input"
+                  formControlName="name"
+                />
+              </div>
+              <div class="modal-form-field">
+                <label for="edit-portfolio-description" class="modal-form-label">Description <span class="modal-form-optional">(optionnel)</span></label>
+                <textarea
+                  id="edit-portfolio-description"
+                  data-testid="edit-input-description"
+                  class="modal-form-input"
+                  formControlName="description"
+                  rows="3"
+                ></textarea>
+              </div>
+              <div class="modal__actions">
+                <button class="btn btn--ghost" (click)="closeEditModal()" [disabled]="editSubmitting()">Annuler</button>
+                <button
+                  data-testid="edit-btn-save"
+                  class="btn btn--primary"
+                  (click)="confirmEdit()"
+                  [disabled]="editForm.invalid || editSubmitting()"
+                >
+                  @if (editSubmitting()) { Enregistrement… } @else { Enregistrer }
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
         @if (deleteModalOpen()) {
           <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
             <div data-testid="delete-portfolio-modal" class="modal">
@@ -78,6 +118,7 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
               [changePercent]="portfolio.changePercent"
               [esgScore]="portfolio.esgScore"
               (cardClick)="onCardClick($event)"
+              (editClick)="openEditModal(portfolio)"
               (deleteClick)="openDeleteModal($event, portfolio.name)"
             />
           }
@@ -188,6 +229,41 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
       color: #fff;
     }
     .btn--danger:hover:not(:disabled) { background: #c9553a; }
+    .btn--primary {
+      background: var(--color-primary, #2D6A4F);
+      color: #fff;
+    }
+    .btn--primary:hover:not(:disabled) { background: var(--color-primary-dark, #1B4332); }
+
+    .modal-form-field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1, 4px);
+    }
+    .modal-form-label {
+      font-size: var(--text-sm, 0.875rem);
+      font-weight: 500;
+      color: var(--color-neutral-700, #3A3A5A);
+    }
+    .modal-form-optional {
+      font-weight: 400;
+      color: var(--color-neutral-500, #6A6A8A);
+    }
+    .modal-form-input {
+      border: 1px solid var(--color-neutral-300, #C5C5D8);
+      border-radius: var(--radius-md, 8px);
+      padding: var(--space-2, 8px) var(--space-3, 12px);
+      font-size: var(--text-base, 1rem);
+      color: var(--color-neutral-900, #1A1A2E);
+      outline: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .modal-form-input:focus {
+      border-color: var(--color-primary, #2D6A4F);
+      box-shadow: 0 0 0 3px rgba(45,106,79,0.15);
+    }
+    textarea.modal-form-input { resize: vertical; min-height: 72px; }
 
     .esg-filter-bar {
       display: flex;
@@ -247,6 +323,15 @@ export class DashboardPage implements OnInit {
   portfolios = signal<PortfolioCardData[]>([]);
   esgFilter = signal<EsgFilter>('all');
 
+  editModalOpen = signal(false);
+  editSubmitting = signal(false);
+  editTargetId = signal<string>('');
+
+  editForm = new FormGroup({
+    name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    description: new FormControl('', { nonNullable: true }),
+  });
+
   deleteModalOpen = signal(false);
   deleteSubmitting = signal(false);
   deleteTargetId = signal<string>('');
@@ -273,6 +358,43 @@ export class DashboardPage implements OnInit {
 
   setFilter(filter: EsgFilter) {
     this.esgFilter.set(filter);
+  }
+
+  openEditModal(portfolio: PortfolioCardData) {
+    this.editTargetId.set(portfolio.id);
+    this.editForm.setValue({
+      name: portfolio.name,
+      description: portfolio.description ?? '',
+    });
+    this.editModalOpen.set(true);
+  }
+
+  closeEditModal() {
+    this.editModalOpen.set(false);
+  }
+
+  confirmEdit() {
+    if (this.editForm.invalid) return;
+    this.editSubmitting.set(true);
+    const description = this.editForm.controls['description'].value.trim() || null;
+    this.portfolioService.updatePortfolio(this.editTargetId(), {
+      name: this.editForm.controls['name'].value.trim(),
+      description,
+    }).subscribe({
+      next: (updated) => {
+        this.portfolios.update(list =>
+          list.map(p => p.id === this.editTargetId()
+            ? { ...p, name: updated.name, description: updated.description }
+            : p
+          )
+        );
+        this.editModalOpen.set(false);
+        this.editSubmitting.set(false);
+      },
+      error: () => {
+        this.editSubmitting.set(false);
+      },
+    });
   }
 
   openDeleteModal(id: string, name: string) {

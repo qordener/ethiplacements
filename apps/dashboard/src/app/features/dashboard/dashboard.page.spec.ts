@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import { DashboardPage } from './dashboard.page';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
+import { ReactiveFormsModule } from '@angular/forms';
 
 const MOCK_PORTFOLIOS: PortfolioCardData[] = [
   { id: 'cuid-1', name: 'PEA Éthique',      description: 'Mon PEA ISR', totalValue: 11200, changePercent: 12,   esgScore: 75  }, // high
@@ -18,12 +19,15 @@ describe('DashboardPage', () => {
   let fixture: ComponentFixture<DashboardPage>;
   let component: DashboardPage;
   let mockDashboardService: { getPortfoliosWithSummary: ReturnType<typeof vi.fn> };
-  let mockPortfolioService: { removePortfolio: ReturnType<typeof vi.fn> };
+  let mockPortfolioService: { removePortfolio: ReturnType<typeof vi.fn>; updatePortfolio: ReturnType<typeof vi.fn> };
   let router: Router;
 
   beforeEach(async () => {
     mockDashboardService = { getPortfoliosWithSummary: vi.fn() };
-    mockPortfolioService = { removePortfolio: vi.fn() };
+    mockPortfolioService = {
+      removePortfolio: vi.fn(),
+      updatePortfolio: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [DashboardPage],
@@ -148,6 +152,86 @@ describe('DashboardPage', () => {
       fixture.detectChanges();
       component.onCardClick('cuid-1');
       expect(navigateSpy).toHaveBeenCalledWith(['/portfolio', 'cuid-1']);
+    });
+  });
+
+  describe('édition de portefeuille', () => {
+    beforeEach(() => {
+      mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of(MOCK_PORTFOLIOS));
+      fixture.detectChanges();
+    });
+
+    it('should open an edit modal when openEditModal is called', () => {
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-modal"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should pre-fill the name field with current portfolio name', () => {
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      fixture.detectChanges();
+      const input = fixture.nativeElement.querySelector('[data-testid="edit-input-name"]');
+      expect(input.value).toBe('PEA Éthique');
+    });
+
+    it('should pre-fill the description field with current portfolio description', () => {
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      fixture.detectChanges();
+      const textarea = fixture.nativeElement.querySelector('[data-testid="edit-input-description"]');
+      expect(textarea.value).toBe('Mon PEA ISR');
+    });
+
+    it('should close the modal without saving when cancel is clicked', () => {
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      fixture.detectChanges();
+      component.closeEditModal();
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-modal"]');
+      expect(modal).toBeNull();
+      expect(mockPortfolioService.updatePortfolio).not.toHaveBeenCalled();
+    });
+
+    it('should call updatePortfolio with the edited values on save', () => {
+      mockPortfolioService.updatePortfolio.mockReturnValue(of({ ...MOCK_PORTFOLIOS[0], name: 'PEA Modifié' }));
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      component.editForm.controls['name'].setValue('PEA Modifié');
+      component.editForm.controls['description'].setValue('');
+      fixture.detectChanges();
+      component.confirmEdit();
+      expect(mockPortfolioService.updatePortfolio).toHaveBeenCalledWith('cuid-1', {
+        name: 'PEA Modifié',
+        description: null,
+      });
+    });
+
+    it('should update the portfolio name in the list after successful edit', () => {
+      const updated = { ...MOCK_PORTFOLIOS[0], name: 'PEA Renommé', description: null };
+      mockPortfolioService.updatePortfolio.mockReturnValue(of(updated));
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      component.editForm.controls['name'].setValue('PEA Renommé');
+      component.editForm.controls['description'].setValue('');
+      component.confirmEdit();
+      fixture.detectChanges();
+      const names = fixture.nativeElement.querySelectorAll('[data-testid="portfolio-name"]');
+      expect(names[0].textContent).toContain('PEA Renommé');
+    });
+
+    it('should close the modal after successful edit', () => {
+      mockPortfolioService.updatePortfolio.mockReturnValue(of(MOCK_PORTFOLIOS[0]));
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      component.confirmEdit();
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-modal"]');
+      expect(modal).toBeNull();
+    });
+
+    it('should disable the save button when name is empty', () => {
+      component.openEditModal(MOCK_PORTFOLIOS[0]);
+      component.editForm.controls['name'].setValue('');
+      fixture.detectChanges();
+      const btn = fixture.nativeElement.querySelector('[data-testid="edit-btn-save"]');
+      expect(btn.disabled).toBe(true);
     });
   });
 

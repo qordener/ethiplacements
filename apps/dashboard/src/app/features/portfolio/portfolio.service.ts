@@ -7,6 +7,11 @@ export interface CreatePortfolioPayload {
   description?: string | null;
 }
 
+export interface UpdatePortfolioPayload {
+  name: string;
+  description: string | null;
+}
+
 export interface Portfolio {
   id: string;
   name: string;
@@ -23,6 +28,13 @@ export class PortfolioService {
     return this.http.post<Portfolio>('/api/portfolios', {
       name: payload.name,
       description: payload.description ?? null,
+    });
+  }
+
+  updatePortfolio(id: string, payload: UpdatePortfolioPayload): Observable<Portfolio> {
+    return this.http.patch<Portfolio>(`/api/portfolios/${id}`, {
+      name: payload.name,
+      description: payload.description,
     });
   }
 

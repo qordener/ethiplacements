@@ -86,6 +86,48 @@ describe('PortfolioService', () => {
     });
   });
 
+  describe('updatePortfolio()', () => {
+    it('should PATCH /api/portfolios/:id with name and description', async () => {
+      const updated = { ...MOCK_CREATED_PORTFOLIO, name: 'PEA Renommé', description: 'Nouvelle desc' };
+      const promise = firstValueFrom(
+        service.updatePortfolio('cuid-new', { name: 'PEA Renommé', description: 'Nouvelle desc' })
+      );
+
+      const req = httpMock.expectOne('/api/portfolios/cuid-new');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual({ name: 'PEA Renommé', description: 'Nouvelle desc' });
+      req.flush(updated);
+
+      const result = await promise;
+      expect(result.name).toBe('PEA Renommé');
+    });
+
+    it('should PATCH with null description when description is empty', async () => {
+      const promise = firstValueFrom(
+        service.updatePortfolio('cuid-new', { name: 'Mon PEA', description: null })
+      );
+
+      const req = httpMock.expectOne('/api/portfolios/cuid-new');
+      expect(req.request.body).toEqual({ name: 'Mon PEA', description: null });
+      req.flush({ ...MOCK_CREATED_PORTFOLIO, description: null });
+
+      await promise;
+    });
+
+    it('should throw when portfolio does not exist (404)', async () => {
+      const promise = firstValueFrom(
+        service.updatePortfolio('nonexistent', { name: 'X', description: null })
+      );
+
+      httpMock.expectOne('/api/portfolios/nonexistent').flush('Not found', {
+        status: 404,
+        statusText: 'Not Found',
+      });
+
+      await expect(promise).rejects.toBeTruthy();
+    });
+  });
+
   describe('removePortfolio()', () => {
     it('should DELETE /api/portfolios/:id', async () => {
       const promise = firstValueFrom(service.removePortfolio('cuid-1'));

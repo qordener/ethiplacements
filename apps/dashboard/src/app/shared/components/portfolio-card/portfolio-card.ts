@@ -27,8 +27,14 @@ export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutra
             [class]="changeClass()"
           >{{ formattedChange() }}</span>
           <button
+            data-testid="btn-edit-portfolio"
+            class="portfolio-card__action-btn"
+            aria-label="Modifier ce portefeuille"
+            (click)="onEditClick($event)"
+          >✎</button>
+          <button
             data-testid="btn-delete-portfolio"
-            class="portfolio-card__delete-btn"
+            class="portfolio-card__action-btn"
             aria-label="Supprimer ce portefeuille"
             (click)="onDeleteClick($event)"
           >🗑</button>
@@ -74,7 +80,7 @@ export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutra
       align-items: center;
       gap: var(--space-2, 8px);
     }
-    .portfolio-card__delete-btn {
+    .portfolio-card__action-btn {
       background: none;
       border: none;
       cursor: pointer;
@@ -84,7 +90,7 @@ export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutra
       opacity: 0.5;
       transition: opacity 0.15s ease;
     }
-    .portfolio-card__delete-btn:hover {
+    .portfolio-card__action-btn:hover {
       opacity: 1;
     }
     .portfolio-card__name {
@@ -126,6 +132,7 @@ export class PortfolioCard {
   esgScore = input.required<number | null>();
 
   cardClick = output<string>();
+  editClick = output<string>();
   deleteClick = output<string>();
 
   changeClass = computed<ChangeClass>(() => {
@@ -153,6 +160,11 @@ export class PortfolioCard {
 
   onClick() {
     this.cardClick.emit(this.id());
+  }
+
+  onEditClick(event: Event) {
+    event.stopPropagation();
+    this.editClick.emit(this.id());
   }
 
   onDeleteClick(event: Event) {

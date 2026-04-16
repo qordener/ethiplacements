@@ -228,6 +228,36 @@ describe('PortfolioCard', () => {
     });
   });
 
+  // ─── Édition ─────────────────────────────────────────────────────────────────
+
+  describe('édition', () => {
+    it('should display an edit button', async () => {
+      await setup();
+      const btn = fixture.nativeElement.querySelector('[data-testid="btn-edit-portfolio"]');
+      expect(btn).toBeTruthy();
+    });
+
+    it('should emit editClick with portfolio id when edit button is clicked', async () => {
+      await setup({ id: 'cuid-42' });
+      const emitted: string[] = [];
+      component.editClick.subscribe((id: string) => emitted.push(id));
+
+      fixture.nativeElement.querySelector('[data-testid="btn-edit-portfolio"]').click();
+
+      expect(emitted).toEqual(['cuid-42']);
+    });
+
+    it('should NOT emit cardClick when edit button is clicked', async () => {
+      await setup({ id: 'cuid-1' });
+      const cardClicks: string[] = [];
+      component.cardClick.subscribe((id: string) => cardClicks.push(id));
+
+      fixture.nativeElement.querySelector('[data-testid="btn-edit-portfolio"]').click();
+
+      expect(cardClicks).toHaveLength(0);
+    });
+  });
+
   // ─── Suppression ─────────────────────────────────────────────────────────────
 
   describe('suppression', () => {
