@@ -543,6 +543,28 @@ describe('PortfolioDetailPage', () => {
       expect(section).toBeTruthy();
     });
 
+    it('should display the ESG bar chart when holdings exist', () => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+      const section = fixture.nativeElement.querySelector('[data-testid="esg-chart-section"]');
+      expect(section).toBeTruthy();
+    });
+
+    it('should render one bar per holding in the ESG chart', () => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+      const bars = fixture.nativeElement.querySelectorAll('[data-testid="bar-row"]');
+      expect(bars).toHaveLength(MOCK_DETAIL.portfolio.holdings.length);
+    });
+
+    it('should use the holding ticker as bar label', () => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+      const labels = fixture.nativeElement.querySelectorAll('[data-testid="bar-label"]');
+      expect(labels[0].textContent.trim()).toBe('BN');
+      expect(labels[1].textContent.trim()).toBe('ENGB');
+    });
+
     it('should not display the allocation chart when there are no holdings', () => {
       mockService.getPortfolioDetail.mockReturnValue(
         of({ ...MOCK_DETAIL, portfolio: { ...MOCK_DETAIL.portfolio, holdings: [] },
@@ -550,6 +572,16 @@ describe('PortfolioDetailPage', () => {
       );
       fixture.detectChanges();
       const section = fixture.nativeElement.querySelector('[data-testid="allocation-chart-section"]');
+      expect(section).toBeNull();
+    });
+
+    it('should not display the ESG bar chart when there are no holdings', () => {
+      mockService.getPortfolioDetail.mockReturnValue(
+        of({ ...MOCK_DETAIL, portfolio: { ...MOCK_DETAIL.portfolio, holdings: [] },
+             summary: { ...MOCK_DETAIL.summary, allocationByType: {} } })
+      );
+      fixture.detectChanges();
+      const section = fixture.nativeElement.querySelector('[data-testid="esg-chart-section"]');
       expect(section).toBeNull();
     });
 

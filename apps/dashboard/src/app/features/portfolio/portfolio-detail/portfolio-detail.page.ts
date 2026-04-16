@@ -13,13 +13,14 @@ import { ScoreBadge } from '../../../shared/components/score-badge/score-badge';
 import { Modal } from '../../../shared/components/modal/modal';
 import { FormField } from '../../../shared/components/form-field/form-field';
 import { DonutChart, DonutSegment } from '../../../shared/components/donut-chart/donut-chart';
+import { BarChart, BarItem } from '../../../shared/components/bar-chart/bar-chart';
 
 type PageState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-portfolio-detail-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart],
+  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart],
   template: `
     <div class="portfolio-detail">
 
@@ -89,6 +90,17 @@ type PageState = 'loading' | 'loaded' | 'error';
                 [segments]="allocationSegments()"
                 ariaLabel="Répartition par type d'actif"
               />
+            </section>
+          }
+
+          @if (esgBars().length > 0) {
+            <section
+              data-testid="esg-chart-section"
+              class="portfolio-detail__esg-chart"
+              aria-label="Scores ESG par position"
+            >
+              <h2 class="portfolio-detail__section-title">Scores ESG par position</h2>
+              <epi-bar-chart [bars]="esgBars()" />
             </section>
           }
 
@@ -508,7 +520,8 @@ type PageState = 'loading' | 'loaded' | 'error';
       margin-bottom: var(--space-8, 32px);
     }
 
-    .portfolio-detail__allocation {
+    .portfolio-detail__allocation,
+    .portfolio-detail__esg-chart {
       margin-bottom: var(--space-8, 32px);
     }
 
@@ -718,6 +731,18 @@ export class PortfolioDetailPage implements OnInit {
   state      = signal<PageState>('loading');
   data       = signal<PortfolioDetailData | null>(null);
 
+  readonly esgBars = computed<BarItem[]>(() => {
+    const holdings = this.data()?.portfolio.holdings ?? [];
+    return holdings.map((h) => {
+      const score = this.getLatestEsgScore(h);
+      return {
+        label: h.asset.ticker,
+        value: score,
+        color: this.esgColor(score),
+      };
+    });
+  });
+
   readonly allocationSegments = computed<DonutSegment[]>(() => {
     const summary = this.data()?.summary;
     if (!summary) return [];
@@ -872,6 +897,13 @@ export class PortfolioDetailPage implements OnInit {
   formatEsgScore(score: number | null): string {
     if (score === null) return '—';
     return Math.round(score).toString();
+  }
+
+  esgColor(score: number | null): string {
+    if (score === null) return '#ADB5BD';
+    if (score >= 70)    return '#2D6A4F';
+    if (score >= 40)    return '#F4A261';
+    return '#E76F51';
   }
 
   openPriceModal(holding: Holding) {
