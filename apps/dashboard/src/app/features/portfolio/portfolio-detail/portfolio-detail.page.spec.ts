@@ -10,6 +10,7 @@ import { HoldingService } from '../holding.service';
 import { AssetService } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
 import { PortfolioService } from '../portfolio.service';
+import { CsvExportService } from '../../../shared/services/csv-export.service';
 
 const MOCK_DETAIL: PortfolioDetailData = {
   portfolio: {
@@ -65,6 +66,7 @@ describe('PortfolioDetailPage', () => {
   let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; updatePrice: ReturnType<typeof vi.fn> };
   let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
   let mockPortfolioService: { updatePortfolio: ReturnType<typeof vi.fn> };
+  let mockCsvExportService: { download: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = { getPortfolioDetail: vi.fn() };
@@ -72,6 +74,7 @@ describe('PortfolioDetailPage', () => {
     mockAssetService = { findAll: vi.fn(), create: vi.fn(), updatePrice: vi.fn() };
     mockEsgScoreService = { create: vi.fn() };
     mockPortfolioService = { updatePortfolio: vi.fn() };
+    mockCsvExportService = { download: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [PortfolioDetailPage],
@@ -82,6 +85,7 @@ describe('PortfolioDetailPage', () => {
         { provide: AssetService, useValue: mockAssetService },
         { provide: EsgScoreService, useValue: mockEsgScoreService },
         { provide: PortfolioService, useValue: mockPortfolioService },
+        { provide: CsvExportService, useValue: mockCsvExportService },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'cuid-1' } } },
@@ -633,6 +637,52 @@ describe('PortfolioDetailPage', () => {
       fixture.detectChanges();
       const btn = fixture.nativeElement.querySelector('[data-testid="edit-portfolio-save-btn"]');
       expect(btn.disabled).toBe(true);
+    });
+  });
+
+  // ─── Export CSV ──────────────────────────────────────────────────────────────
+
+  describe('export CSV', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+    });
+
+    it('should display an export CSV button when holdings exist', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="export-csv-btn"]');
+      expect(btn).toBeTruthy();
+    });
+
+    it('should not display the export CSV button when there are no holdings', () => {
+      component.data.set({ ...MOCK_DETAIL, portfolio: { ...MOCK_DETAIL.portfolio, holdings: [] } });
+      fixture.detectChanges();
+      const btn = fixture.nativeElement.querySelector('[data-testid="export-csv-btn"]');
+      expect(btn).toBeNull();
+    });
+
+    it('should call CsvExportService.download when the button is clicked', () => {
+      fixture.nativeElement.querySelector('[data-testid="export-csv-btn"]').click();
+      expect(mockCsvExportService.download).toHaveBeenCalled();
+    });
+
+    it('should pass a filename based on portfolio name', () => {
+      fixture.nativeElement.querySelector('[data-testid="export-csv-btn"]').click();
+      const [filename] = mockCsvExportService.download.mock.calls[0];
+      expect(filename).toContain('Mon_PEA');
+      expect(filename).toContain('.csv');
+    });
+
+    it('should include one row per holding in the exported data', () => {
+      fixture.nativeElement.querySelector('[data-testid="export-csv-btn"]').click();
+      const [, , rows] = mockCsvExportService.download.mock.calls[0];
+      expect(rows).toHaveLength(MOCK_DETAIL.portfolio.holdings.length);
+    });
+
+    it('should include the ticker in each exported row', () => {
+      fixture.nativeElement.querySelector('[data-testid="export-csv-btn"]').click();
+      const [, , rows] = mockCsvExportService.download.mock.calls[0];
+      expect(rows[0]).toContain('BN');
+      expect(rows[1]).toContain('ENGB');
     });
   });
 

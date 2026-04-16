@@ -10,6 +10,7 @@ import { HoldingService } from '../holding.service';
 import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
 import { PortfolioService } from '../portfolio.service';
+import { CsvExportService } from '../../../shared/services/csv-export.service';
 import { MetricCard } from '../../../shared/components/metric-card/metric-card';
 import { ScoreBadge } from '../../../shared/components/score-badge/score-badge';
 import { Modal } from '../../../shared/components/modal/modal';
@@ -118,14 +119,22 @@ type PageState = 'loading' | 'loaded' | 'error';
           <section class="portfolio-detail__holdings" aria-label="Positions">
             <div class="portfolio-detail__section-header">
               <h2 class="portfolio-detail__section-title">Positions</h2>
-              <button
-                data-testid="add-holding-btn"
-                type="button"
-                class="btn btn--primary"
-                (click)="openAddHolding()"
-              >
-                + Ajouter une position
-              </button>
+              <div class="portfolio-detail__section-actions">
+                @if (data()!.portfolio.holdings.length > 0) {
+                  <button
+                    data-testid="export-csv-btn"
+                    type="button"
+                    class="btn btn--secondary"
+                    (click)="exportCsv()"
+                  >↓ CSV</button>
+                }
+                <button
+                  data-testid="add-holding-btn"
+                  type="button"
+                  class="btn btn--primary"
+                  (click)="openAddHolding()"
+                >+ Ajouter</button>
+              </div>
             </div>
 
             @if (data()!.portfolio.holdings.length === 0) {
@@ -648,6 +657,11 @@ type PageState = 'loading' | 'loaded' | 'error';
       margin-bottom: var(--space-4, 16px);
     }
 
+    .portfolio-detail__section-actions {
+      display: flex;
+      gap: var(--space-2, 8px);
+    }
+
     .portfolio-detail__section-title {
       font-size: var(--text-lg, 1.125rem);
       font-weight: 600;
@@ -888,6 +902,7 @@ export class PortfolioDetailPage implements OnInit {
   private readonly assetService = inject(AssetService);
   private readonly esgScoreService = inject(EsgScoreService);
   private readonly portfolioService = inject(PortfolioService);
+  private readonly csvExportService = inject(CsvExportService);
 
   readonly assetTypes: AssetType[] = ['STOCK', 'ETF', 'BOND', 'CRYPTO', 'OTHER'];
 
@@ -1141,6 +1156,31 @@ export class PortfolioDetailPage implements OnInit {
           error: (err) => this.onSubmitError(err),
         });
     }
+  }
+
+  exportCsv() {
+    const detail = this.data();
+    if (!detail) return;
+
+    const headers = ['Ticker', 'Nom', 'Type', 'Quantité', 'Prix moyen (€)', 'Prix actuel (€)', 'Valeur (€)', 'Score ESG'];
+    const rows = detail.portfolio.holdings.map(h => {
+      const currentPrice = h.asset.manualPrice ?? h.averagePrice;
+      const value        = h.quantity * currentPrice;
+      const esgScore     = this.getLatestEsgScore(h);
+      return [
+        h.asset.ticker,
+        h.asset.name,
+        h.asset.type,
+        h.quantity,
+        h.averagePrice,
+        currentPrice,
+        +value.toFixed(2),
+        esgScore ?? '',
+      ];
+    });
+
+    const filename = `${detail.portfolio.name.replace(/\s+/g, '_')}_positions.csv`;
+    this.csvExportService.download(filename, headers, rows);
   }
 
   formatEsgScore(score: number | null): string {
