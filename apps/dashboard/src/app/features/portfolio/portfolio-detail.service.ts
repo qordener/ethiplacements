@@ -43,6 +43,13 @@ export interface PortfolioSummary {
   allocationByType: Record<string, number>;
 }
 
+export type HistoryRange = '1m' | '3m' | '1y';
+
+export interface HistoryPoint {
+  date: string;
+  value: number;
+}
+
 export interface PortfolioDetailData {
   portfolio: PortfolioDetail;
   summary: PortfolioSummary;
@@ -56,6 +63,12 @@ export class PortfolioDetailService {
     return forkJoin({
       portfolio: this.http.get<PortfolioDetail>(`/api/portfolios/${id}`),
       summary: this.http.get<PortfolioSummary>(`/api/portfolios/${id}/summary`),
+    });
+  }
+
+  getHistory(id: string, range: HistoryRange): Observable<HistoryPoint[]> {
+    return this.http.get<HistoryPoint[]>(`/api/portfolios/${id}/history`, {
+      params: { range },
     });
   }
 }

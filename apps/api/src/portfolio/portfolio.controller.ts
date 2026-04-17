@@ -8,8 +8,9 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
-import { PortfolioService } from './portfolio.service';
+import { PortfolioService, HistoryRange } from './portfolio.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 
@@ -48,5 +49,13 @@ export class PortfolioController {
   @Get(':id/summary')
   getSummary(@Param('id') id: string) {
     return this.portfolioService.getSummary(id);
+  }
+
+  @Get(':id/history')
+  getHistory(
+    @Param('id') id: string,
+    @Query('range') range?: HistoryRange,
+  ) {
+    return this.portfolioService.getHistory(id, range ?? '1m');
   }
 }

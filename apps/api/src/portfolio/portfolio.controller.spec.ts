@@ -10,6 +10,8 @@ const mockPortfolioService = {
   findOne: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  getSummary: vi.fn(),
+  getHistory: vi.fn(),
 };
 
 describe('PortfolioController', () => {
@@ -98,6 +100,28 @@ describe('PortfolioController', () => {
 
       expect(mockPortfolioService.remove).toHaveBeenCalledWith('cuid1');
       expect(result).toEqual(deleted);
+    });
+  });
+
+  // ─── GET /portfolios/:id/history ─────────────────────────────────────────
+
+  describe('getHistory', () => {
+    it('should call service.getHistory with default range 1m', async () => {
+      mockPortfolioService.getHistory.mockResolvedValue([]);
+
+      await controller.getHistory('p1', undefined);
+
+      expect(mockPortfolioService.getHistory).toHaveBeenCalledWith('p1', '1m');
+    });
+
+    it('should forward the range query param to the service', async () => {
+      const points = [{ date: '2026-04-01', value: 1500 }];
+      mockPortfolioService.getHistory.mockResolvedValue(points);
+
+      const result = await controller.getHistory('p1', '3m');
+
+      expect(mockPortfolioService.getHistory).toHaveBeenCalledWith('p1', '3m');
+      expect(result).toEqual(points);
     });
   });
 });

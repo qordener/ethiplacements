@@ -61,7 +61,7 @@ const MOCK_DETAIL: PortfolioDetailData = {
 describe('PortfolioDetailPage', () => {
   let fixture: ComponentFixture<PortfolioDetailPage>;
   let component: PortfolioDetailPage;
-  let mockService: { getPortfolioDetail: ReturnType<typeof vi.fn> };
+  let mockService: { getPortfolioDetail: ReturnType<typeof vi.fn>; getHistory: ReturnType<typeof vi.fn> };
   let mockHoldingService: { create: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> };
   let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; updatePrice: ReturnType<typeof vi.fn> };
   let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
@@ -69,7 +69,7 @@ describe('PortfolioDetailPage', () => {
   let mockCsvExportService: { download: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    mockService = { getPortfolioDetail: vi.fn() };
+    mockService = { getPortfolioDetail: vi.fn(), getHistory: vi.fn().mockReturnValue(of([])) };
     mockHoldingService = { create: vi.fn(), remove: vi.fn() };
     mockAssetService = { findAll: vi.fn(), create: vi.fn(), updatePrice: vi.fn() };
     mockEsgScoreService = { create: vi.fn() };

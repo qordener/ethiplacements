@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 
-import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore } from '../portfolio-detail.service';
+import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore, HistoryRange, HistoryPoint } from '../portfolio-detail.service';
 import { HoldingService } from '../holding.service';
 import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
@@ -17,13 +17,14 @@ import { Modal } from '../../../shared/components/modal/modal';
 import { FormField } from '../../../shared/components/form-field/form-field';
 import { DonutChart, DonutSegment } from '../../../shared/components/donut-chart/donut-chart';
 import { BarChart, BarItem } from '../../../shared/components/bar-chart/bar-chart';
+import { LineChart, LinePoint } from '../../../shared/components/line-chart/line-chart';
 
 type PageState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-portfolio-detail-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart],
+  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart],
   template: `
     <div class="portfolio-detail">
 
@@ -92,6 +93,32 @@ type PageState = 'loading' | 'loaded' | 'error';
               label="Score ESG"
               [value]="formatEsgScore(data()!.summary.esgScoreWeighted)"
               tooltip="Score Environnemental, Social et de Gouvernance pondéré par la valeur de chaque position (0 = très mauvais, 100 = exemplaire). Les positions sans score ne sont pas comptabilisées."
+            />
+          </section>
+
+          <section
+            data-testid="history-chart-section"
+            class="portfolio-detail__history"
+            aria-label="Performance historique"
+          >
+            <div class="portfolio-detail__section-header">
+              <h2 class="portfolio-detail__section-title">Performance</h2>
+              <div class="history-range-btns" role="group" aria-label="Période">
+                @for (r of historyRanges; track r.value) {
+                  <button
+                    type="button"
+                    [attr.data-testid]="'history-range-' + r.value"
+                    [attr.aria-pressed]="historyRange() === r.value ? 'true' : 'false'"
+                    [class.history-range-btns__btn--active]="historyRange() === r.value"
+                    class="history-range-btns__btn"
+                    (click)="setHistoryRange(r.value)"
+                  >{{ r.label }}</button>
+                }
+              </div>
+            </div>
+            <epi-line-chart
+              [points]="historyPoints()"
+              ariaLabel="Évolution de la valeur du portefeuille"
             />
           </section>
 
@@ -649,9 +676,34 @@ type PageState = 'loading' | 'loaded' | 'error';
       margin-bottom: var(--space-8, 32px);
     }
 
+    .portfolio-detail__history,
     .portfolio-detail__allocation,
     .portfolio-detail__esg-chart {
       margin-bottom: var(--space-8, 32px);
+    }
+
+    .history-range-btns {
+      display: flex;
+      gap: var(--space-1, 4px);
+    }
+
+    .history-range-btns__btn {
+      padding: var(--space-1, 4px) var(--space-2, 8px);
+      border: 1px solid var(--color-border, #e8e8f0);
+      border-radius: var(--radius-sm, 4px);
+      background: none;
+      cursor: pointer;
+      font-size: var(--text-xs, 0.75rem);
+      font-weight: 500;
+      color: var(--color-text-muted, #4a4a6a);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .history-range-btns__btn:hover,
+    .history-range-btns__btn--active {
+      background: var(--color-primary, #2D6A4F);
+      color: #fff;
+      border-color: var(--color-primary, #2D6A4F);
     }
 
     .portfolio-detail__section-header {
@@ -928,6 +980,15 @@ export class PortfolioDetailPage implements OnInit {
 
   state      = signal<PageState>('loading');
   data       = signal<PortfolioDetailData | null>(null);
+
+  // ─── Historique de performance ───────────────────────────────────────────
+  readonly historyRanges: { value: HistoryRange; label: string }[] = [
+    { value: '1m', label: '1M' },
+    { value: '3m', label: '3M' },
+    { value: '1y', label: '1A' },
+  ];
+  historyRange  = signal<HistoryRange>('1m');
+  historyPoints = signal<LinePoint[]>([]);
 
   readonly esgBars = computed<BarItem[]>(() => {
     const holdings = this.data()?.portfolio.holdings ?? [];
@@ -1286,14 +1347,27 @@ export class PortfolioDetailPage implements OnInit {
     ).score;
   }
 
+  setHistoryRange(range: HistoryRange) {
+    this.historyRange.set(range);
+    this.loadHistory();
+  }
+
   private loadData() {
     this.state.set('loading');
     this.portfolioDetailService.getPortfolioDetail(this.portfolioId).subscribe({
       next: (detail) => {
         this.data.set(detail);
         this.state.set('loaded');
+        this.loadHistory();
       },
       error: () => this.state.set('error'),
+    });
+  }
+
+  private loadHistory() {
+    this.portfolioDetailService.getHistory(this.portfolioId, this.historyRange()).subscribe({
+      next: (points) => this.historyPoints.set(points),
+      error: () => this.historyPoints.set([]),
     });
   }
 

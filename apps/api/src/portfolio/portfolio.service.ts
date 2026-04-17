@@ -3,6 +3,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 
+export type HistoryRange = '1m' | '3m' | '1y';
+
+export interface HistoryPoint {
+  date: string;   // ISO date YYYY-MM-DD
+  value: number;
+}
+
 export interface PortfolioSummary {
   totalInvested: number;
   currentValue: number;
@@ -120,5 +127,68 @@ export class PortfolioService {
       : null;
 
     return { totalInvested, currentValue, latentGain, latentGainPct, esgScoreWeighted, allocationByType };
+  }
+
+  async getHistory(id: string, range: HistoryRange = '1m'): Promise<HistoryPoint[]> {
+    const portfolio = await this.prisma.portfolio.findUnique({
+      where: { id },
+      include: { holdings: { select: { quantity: true, averagePrice: true, assetId: true } } },
+    });
+
+    if (!portfolio) throw new NotFoundException(`Portfolio ${id} introuvable`);
+
+    const activeHoldings = portfolio.holdings.filter((h) => h.quantity > 0);
+    if (activeHoldings.length === 0) return [];
+
+    const days = range === '1y' ? 365 : range === '3m' ? 90 : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const assetIds = activeHoldings.map((h) => h.assetId);
+
+    const snapshots = await this.prisma.priceSnapshot.findMany({
+      where: { assetId: { in: assetIds }, fetchedAt: { gte: since } },
+      orderBy: { fetchedAt: 'asc' },
+      select: { assetId: true, price: true, fetchedAt: true },
+    });
+
+    if (snapshots.length === 0) return [];
+
+    // ─── Grouper par jour → dernier snapshot de la journée par actif ─────────
+    // priceByDateAsset[YYYY-MM-DD][assetId] = last known price that day
+    const priceByDateAsset: Record<string, Record<string, number>> = {};
+    for (const snap of snapshots) {
+      const day = snap.fetchedAt.toISOString().slice(0, 10);
+      if (!priceByDateAsset[day]) priceByDateAsset[day] = {};
+      priceByDateAsset[day][snap.assetId] = snap.price; // dernier = le plus récent (trié asc)
+    }
+
+    // ─── Carry-forward : pour chaque actif, propager le dernier prix connu ───
+    const sortedDays = Object.keys(priceByDateAsset).sort();
+    const lastKnownPrice: Record<string, number> = {};
+
+    // Initialiser avec prix d'achat moyen comme fallback
+    for (const h of activeHoldings) {
+      lastKnownPrice[h.assetId] = h.averagePrice;
+    }
+
+    const points: HistoryPoint[] = [];
+
+    for (const day of sortedDays) {
+      // Mettre à jour les prix connus ce jour
+      for (const [assetId, price] of Object.entries(priceByDateAsset[day])) {
+        lastKnownPrice[assetId] = price;
+      }
+
+      // Valeur du portefeuille ce jour avec les derniers prix connus
+      const value = activeHoldings.reduce((sum, h) => {
+        const price = lastKnownPrice[h.assetId] ?? h.averagePrice;
+        return sum + h.quantity * price;
+      }, 0);
+
+      points.push({ date: day, value: Math.round(value * 100) / 100 });
+    }
+
+    return points;
   }
 }
