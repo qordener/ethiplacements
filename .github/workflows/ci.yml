@@ -33,7 +33,7 @@ jobs:
         run: npx nx run-many -t lint --projects=api,dashboard
 
       - name: Test
-        run: npx nx run-many -t test --projects=api
+        run: npx nx run-many -t test --projects=api,dashboard
 
       - name: Build
         run: npx nx run-many -t build --projects=api,dashboard

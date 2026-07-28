@@ -5,7 +5,7 @@ import { ScoreBadge } from '../score-badge/score-badge';
 export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutral';
 
 @Component({
-  selector: 'app-portfolio-card',
+  selector: 'epi-portfolio-card',
   standalone: true,
   imports: [CommonModule, ScoreBadge],
   template: `

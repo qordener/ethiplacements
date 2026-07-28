@@ -110,7 +110,7 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
         }
         <div class="dashboard-grid">
           @for (portfolio of filteredPortfolios(); track portfolio.id) {
-            <app-portfolio-card
+            <epi-portfolio-card
               [id]="portfolio.id"
               [name]="portfolio.name"
               [description]="portfolio.description"

@@ -10,7 +10,7 @@ import { InfoTooltip } from '../info-tooltip/info-tooltip';
       <span class="metric-card__label-row">
         <span data-testid="metric-label" class="metric-card__label">{{ label() }}</span>
         @if (tooltip()) {
-          <app-info-tooltip [text]="tooltip()!" />
+          <epi-info-tooltip [text]="tooltip()!" />
         }
       </span>
 

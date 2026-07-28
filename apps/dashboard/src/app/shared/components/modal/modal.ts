@@ -8,11 +8,13 @@ let modalIdCounter = 0;
   standalone: true,
   template: `
     @if (open()) {
+      <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- backdrop close-on-click is a mouse convenience; the keyboard equivalent (Escape) is handled at document level in ngOnInit -->
       <div
         data-testid="modal-backdrop"
         class="modal-backdrop"
         (click)="onBackdropClick($event)"
       >
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -- stops backdrop click propagation only, not itself an interactive control -->
         <div
           data-testid="modal-dialog"
           class="modal-dialog"

@@ -2,7 +2,7 @@ import { Component, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-info-tooltip',
+  selector: 'epi-info-tooltip',
   standalone: true,
   imports: [CommonModule],
   template: `

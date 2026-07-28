@@ -75,7 +75,7 @@ describe('CsvExportService', () => {
       const doc = TestBed.inject(DOCUMENT);
       vi.spyOn(doc, 'createElement').mockReturnValue(mockAnchor);
       vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fake');
-      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
 
       service.download('export.csv', ['Ticker'], [['BN']]);
 
