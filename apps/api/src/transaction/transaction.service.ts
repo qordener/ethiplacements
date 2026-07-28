@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -70,8 +71,9 @@ export class TransactionService {
   async update(id: string, dto: UpdateTransactionDto) {
     try {
       return await this.prisma.transaction.update({ where: { id }, data: dto });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`Transaction ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`Transaction ${id} introuvable`);
       throw e;
     }
   }

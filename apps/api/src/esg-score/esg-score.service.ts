@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEsgScoreDto } from './dto/create-esg-score.dto';
 import { UpdateEsgScoreDto } from './dto/update-esg-score.dto';
@@ -25,8 +26,9 @@ export class EsgScoreService {
   async update(id: string, dto: UpdateEsgScoreDto) {
     try {
       return await this.prisma.esgScore.update({ where: { id }, data: dto });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`EsgScore ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`EsgScore ${id} introuvable`);
       throw e;
     }
   }
@@ -34,8 +36,9 @@ export class EsgScoreService {
   async remove(id: string) {
     try {
       return await this.prisma.esgScore.delete({ where: { id } });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`EsgScore ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`EsgScore ${id} introuvable`);
       throw e;
     }
   }

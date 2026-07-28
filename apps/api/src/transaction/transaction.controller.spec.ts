@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { TransactionController } from './transaction.controller';
 import { TransactionService } from './transaction.service';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
 const mockTransactionService = {
   create: vi.fn(),
@@ -33,7 +35,7 @@ describe('TransactionController', () => {
       const created = { id: 'tx1', holdingId: 'h1', ...dto };
       mockTransactionService.create.mockResolvedValue(created);
 
-      const result = await controller.create('h1', dto as any);
+      const result = await controller.create('h1', dto as unknown as CreateTransactionDto);
 
       expect(mockTransactionService.create).toHaveBeenCalledWith('h1', dto);
       expect(result).toEqual(created);
@@ -84,7 +86,7 @@ describe('TransactionController', () => {
       const updated = { id: 'tx1', type: 'BUY', notes: 'Correction' };
       mockTransactionService.update.mockResolvedValue(updated);
 
-      const result = await controller.update('tx1', dto as any);
+      const result = await controller.update('tx1', dto as UpdateTransactionDto);
 
       expect(mockTransactionService.update).toHaveBeenCalledWith('tx1', dto);
       expect(result).toEqual(updated);

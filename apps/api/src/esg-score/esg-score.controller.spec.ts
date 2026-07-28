@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { EsgScoreController } from './esg-score.controller';
 import { EsgScoreService } from './esg-score.service';
+import { CreateEsgScoreDto } from './dto/create-esg-score.dto';
+import { UpdateEsgScoreDto } from './dto/update-esg-score.dto';
 
 const mockEsgScoreService = {
   create: vi.fn(),
@@ -33,7 +35,7 @@ describe('EsgScoreController', () => {
       const created = { id: 'esg1', assetId: 'asset1', ...dto, date: new Date(), details: null };
       mockEsgScoreService.create.mockResolvedValue(created);
 
-      const result = await controller.create('asset1', dto as any);
+      const result = await controller.create('asset1', dto as CreateEsgScoreDto);
 
       expect(mockEsgScoreService.create).toHaveBeenCalledWith({ ...dto, assetId: 'asset1' });
       expect(result).toEqual(created);
@@ -84,7 +86,7 @@ describe('EsgScoreController', () => {
       const updated = { id: 'esg1', score: 80, provider: 'MSCI' };
       mockEsgScoreService.update.mockResolvedValue(updated);
 
-      const result = await controller.update('esg1', dto as any);
+      const result = await controller.update('esg1', dto as UpdateEsgScoreDto);
 
       expect(mockEsgScoreService.update).toHaveBeenCalledWith('esg1', dto);
       expect(result).toEqual(updated);

@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { AssetType } from '../../../generated/prisma/enums';
 
 export class UpdateAssetDto {

@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { HoldingService } from './holding.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateHoldingDto } from './dto/create-holding.dto';
+import { UpdateHoldingDto } from './dto/update-holding.dto';
 
 class PrismaP2025Error extends Error {
   code = 'P2025';
@@ -47,7 +49,7 @@ describe('HoldingService', () => {
       const expected = { id: 'h1', portfolioId: 'p1', ...dto };
       mockPrisma.holding.create.mockResolvedValue(expected);
 
-      const result = await service.create('p1', dto as any);
+      const result = await service.create('p1', dto as CreateHoldingDto);
 
       expect(mockPrisma.holding.create).toHaveBeenCalledWith({
         data: { portfolioId: 'p1', ...dto },
@@ -59,7 +61,7 @@ describe('HoldingService', () => {
     it('should throw ConflictException when asset already in portfolio (P2002)', async () => {
       mockPrisma.holding.create.mockRejectedValue(new PrismaP2002Error());
 
-      await expect(service.create('p1', { assetId: 'asset1', quantity: 5, averagePrice: 50 } as any))
+      await expect(service.create('p1', { assetId: 'asset1', quantity: 5, averagePrice: 50 } as CreateHoldingDto))
         .rejects.toThrow(ConflictException);
     });
   });
@@ -133,7 +135,7 @@ describe('HoldingService', () => {
       const updated = { id: 'h1', portfolioId: 'p1', assetId: 'asset1', ...dto };
       mockPrisma.holding.update.mockResolvedValue(updated);
 
-      const result = await service.update('h1', dto as any);
+      const result = await service.update('h1', dto as UpdateHoldingDto);
 
       expect(mockPrisma.holding.update).toHaveBeenCalledWith({
         where: { id: 'h1' },
@@ -145,7 +147,7 @@ describe('HoldingService', () => {
     it('should throw NotFoundException when holding does not exist (P2025)', async () => {
       mockPrisma.holding.update.mockRejectedValue(new PrismaP2025Error());
 
-      await expect(service.update('nonexistent', { quantity: 5 } as any))
+      await expect(service.update('nonexistent', { quantity: 5 } as UpdateHoldingDto))
         .rejects.toThrow(NotFoundException);
     });
   });

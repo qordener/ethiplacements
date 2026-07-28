@@ -57,14 +57,16 @@ describe('DashboardService', () => {
       const data = await promise;
       expect(data).toHaveLength(2);
 
-      const pea = data.find((d) => d.id === 'cuid-1')!;
+      const pea = data.find((d) => d.id === 'cuid-1');
+      if (!pea) throw new Error('Expected pea portfolio in result');
       expect(pea.name).toBe('PEA Éthique');
       expect(pea.description).toBe('Mon PEA ISR');
       expect(pea.totalValue).toBe(11200);
       expect(pea.changePercent).toBe(12);
       expect(pea.esgScore).toBe(72);
 
-      const livret = data.find((d) => d.id === 'cuid-2')!;
+      const livret = data.find((d) => d.id === 'cuid-2');
+      if (!livret) throw new Error('Expected livret portfolio in result');
       expect(livret.name).toBe('Livret Solidaire');
       expect(livret.description).toBeNull();
       expect(livret.totalValue).toBe(5000);

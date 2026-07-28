@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { HoldingController } from './holding.controller';
 import { HoldingService } from './holding.service';
+import { CreateHoldingDto } from './dto/create-holding.dto';
+import { UpdateHoldingDto } from './dto/update-holding.dto';
 
 const mockHoldingService = {
   create: vi.fn(),
@@ -33,7 +35,7 @@ describe('HoldingController', () => {
       const created = { id: 'h1', portfolioId: 'p1', ...dto, asset: { ticker: 'CW8' } };
       mockHoldingService.create.mockResolvedValue(created);
 
-      const result = await controller.create('p1', dto as any);
+      const result = await controller.create('p1', dto as CreateHoldingDto);
 
       expect(mockHoldingService.create).toHaveBeenCalledWith('p1', dto);
       expect(result).toEqual(created);
@@ -84,7 +86,7 @@ describe('HoldingController', () => {
       const updated = { id: 'h1', quantity: 15, averagePrice: 100 };
       mockHoldingService.update.mockResolvedValue(updated);
 
-      const result = await controller.update('h1', dto as any);
+      const result = await controller.update('h1', dto as UpdateHoldingDto);
 
       expect(mockHoldingService.update).toHaveBeenCalledWith('h1', dto);
       expect(result).toEqual(updated);

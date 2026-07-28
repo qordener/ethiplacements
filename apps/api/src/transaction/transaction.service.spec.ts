@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
 class PrismaP2025Error extends Error {
   code = 'P2025';
@@ -52,7 +54,7 @@ describe('TransactionService', () => {
       mockPrisma.holding.update.mockResolvedValue({ id: 'h1', quantity: 15, averagePrice: 106.67 });
 
       // Act
-      const result = await service.create('h1', dto as any);
+      const result = await service.create('h1', dto as unknown as CreateTransactionDto);
 
       // Assert — CUMP = (10 * 100 + 5 * 120) / (10 + 5) = 1600/15 ≈ 106.67
       expect(mockPrisma.holding.update).toHaveBeenCalledWith({
@@ -74,7 +76,7 @@ describe('TransactionService', () => {
       mockPrisma.transaction.create.mockResolvedValue({ id: 'tx2', holdingId: 'h1', ...dto });
       mockPrisma.holding.update.mockResolvedValue({ id: 'h1', quantity: 10, averagePrice: 90 });
 
-      await service.create('h1', dto as any);
+      await service.create('h1', dto as unknown as CreateTransactionDto);
 
       // CUMP = (0 * 0 + 10 * 90) / (0 + 10) = 90
       expect(mockPrisma.holding.update).toHaveBeenCalledWith({
@@ -86,7 +88,7 @@ describe('TransactionService', () => {
     it('should throw NotFoundException when holding does not exist', async () => {
       mockPrisma.holding.findUnique.mockResolvedValue(null);
 
-      await expect(service.create('nonexistent', { type: 'BUY', quantity: 5, price: 100, date: new Date() } as any))
+      await expect(service.create('nonexistent', { type: 'BUY', quantity: 5, price: 100, date: new Date() } as unknown as CreateTransactionDto))
         .rejects.toThrow(NotFoundException);
     });
   });
@@ -103,7 +105,7 @@ describe('TransactionService', () => {
       mockPrisma.transaction.create.mockResolvedValue({ id: 'tx3', holdingId: 'h1', ...dto });
       mockPrisma.holding.update.mockResolvedValue({ id: 'h1', quantity: 12, averagePrice: 110 });
 
-      await service.create('h1', dto as any);
+      await service.create('h1', dto as unknown as CreateTransactionDto);
 
       // PRU inchangé, quantité décrémentée
       expect(mockPrisma.holding.update).toHaveBeenCalledWith({
@@ -123,7 +125,7 @@ describe('TransactionService', () => {
       mockPrisma.transaction.create.mockResolvedValue({ id: 'tx4', holdingId: 'h1', ...dto });
       mockPrisma.holding.update.mockResolvedValue({ id: 'h1', quantity: 0, averagePrice: 100 });
 
-      await service.create('h1', dto as any);
+      await service.create('h1', dto as unknown as CreateTransactionDto);
 
       // Holding conservé à quantity = 0 (historique intact)
       expect(mockPrisma.holding.update).toHaveBeenCalledWith({
@@ -140,7 +142,7 @@ describe('TransactionService', () => {
 
       const dto = { type: 'SELL', quantity: 10, price: 120, date: new Date() };
 
-      await expect(service.create('h1', dto as any))
+      await expect(service.create('h1', dto as unknown as CreateTransactionDto))
         .rejects.toThrow(UnprocessableEntityException);
 
       // Ni transaction créée, ni holding modifié
@@ -151,7 +153,7 @@ describe('TransactionService', () => {
     it('should throw NotFoundException when holding does not exist', async () => {
       mockPrisma.holding.findUnique.mockResolvedValue(null);
 
-      await expect(service.create('nonexistent', { type: 'SELL', quantity: 5, price: 100, date: new Date() } as any))
+      await expect(service.create('nonexistent', { type: 'SELL', quantity: 5, price: 100, date: new Date() } as unknown as CreateTransactionDto))
         .rejects.toThrow(NotFoundException);
     });
   });
@@ -214,7 +216,7 @@ describe('TransactionService', () => {
       const updated = { id: 'tx1', holdingId: 'h1', type: 'BUY', quantity: 10, price: 100, notes: 'Correction saisie' };
       mockPrisma.transaction.update.mockResolvedValue(updated);
 
-      const result = await service.update('tx1', dto as any);
+      const result = await service.update('tx1', dto as UpdateTransactionDto);
 
       expect(mockPrisma.transaction.update).toHaveBeenCalledWith({
         where: { id: 'tx1' },
@@ -226,7 +228,7 @@ describe('TransactionService', () => {
     it('should throw NotFoundException when transaction does not exist (P2025)', async () => {
       mockPrisma.transaction.update.mockRejectedValue(new PrismaP2025Error());
 
-      await expect(service.update('nonexistent', { notes: 'X' } as any))
+      await expect(service.update('nonexistent', { notes: 'X' } as UpdateTransactionDto))
         .rejects.toThrow(NotFoundException);
     });
   });

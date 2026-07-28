@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
@@ -10,8 +11,9 @@ export class AssetService {
   async create(dto: CreateAssetDto) {
     try {
       return await this.prisma.asset.create({ data: dto });
-    } catch (e: any) {
-      if (e?.code === 'P2002') throw new ConflictException(`Un actif avec le ticker "${dto.ticker}" existe déjà`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2002') throw new ConflictException(`Un actif avec le ticker "${dto.ticker}" existe déjà`);
       throw e;
     }
   }
@@ -30,9 +32,10 @@ export class AssetService {
   async update(id: string, dto: UpdateAssetDto) {
     try {
       return await this.prisma.asset.update({ where: { id }, data: dto });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`Asset ${id} introuvable`);
-      if (e?.code === 'P2002') throw new ConflictException(`Un actif avec ce ticker existe déjà`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`Asset ${id} introuvable`);
+      if (code === 'P2002') throw new ConflictException(`Un actif avec ce ticker existe déjà`);
       throw e;
     }
   }
@@ -40,8 +43,9 @@ export class AssetService {
   async remove(id: string) {
     try {
       return await this.prisma.asset.delete({ where: { id } });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`Asset ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`Asset ${id} introuvable`);
       throw e;
     }
   }

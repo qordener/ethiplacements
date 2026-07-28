@@ -1,11 +1,12 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 
-import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore, HistoryRange, HistoryPoint } from '../portfolio-detail.service';
+import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore, HistoryRange } from '../portfolio-detail.service';
 import { HoldingService } from '../holding.service';
 import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
@@ -1148,7 +1149,12 @@ export class PortfolioDetailPage implements OnInit {
   private portfolioId = '';
 
   ngOnInit() {
-    this.portfolioId = this.route.snapshot.paramMap.get('id')!;
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id) {
+      this.state.set('error');
+      return;
+    }
+    this.portfolioId = id;
     this.loadData();
   }
 
@@ -1182,23 +1188,26 @@ export class PortfolioDetailPage implements OnInit {
     if (this.holdingForm.invalid) return;
 
     const { ticker, assetName, assetType, quantity, averagePrice } = this.holdingForm.value;
+    // Guaranteed non-null: the required validators above (holdingForm.invalid check)
+    // ensure every field has a value before this point — narrow the types once here
+    // instead of asserting `!` at each use site below.
+    if (!ticker || !assetName || !assetType || quantity == null || averagePrice == null) {
+      return;
+    }
+
     const existingAsset = this.assets().find(
-      (a) => a.ticker.toUpperCase() === ticker!.toUpperCase()
+      (a) => a.ticker.toUpperCase() === ticker.toUpperCase()
     );
 
     this.submitting.set(true);
     this.submitError.set(null);
 
-    const assetId$ = existingAsset
-      ? [existingAsset.id]
-      : null;
-
     if (existingAsset) {
       this.holdingService
         .create(this.portfolioId, {
           assetId: existingAsset.id,
-          quantity: quantity!,
-          averagePrice: averagePrice!,
+          quantity,
+          averagePrice,
         })
         .subscribe({
           next: () => this.onHoldingCreated(),
@@ -1206,13 +1215,13 @@ export class PortfolioDetailPage implements OnInit {
         });
     } else {
       this.assetService
-        .create({ ticker: ticker!, name: assetName!, type: assetType! })
+        .create({ ticker, name: assetName, type: assetType })
         .pipe(
           switchMap((newAsset) =>
             this.holdingService.create(this.portfolioId, {
               assetId: newAsset.id,
-              quantity: quantity!,
-              averagePrice: averagePrice!,
+              quantity,
+              averagePrice,
             })
           )
         )
@@ -1279,8 +1288,12 @@ export class PortfolioDetailPage implements OnInit {
     if (this.priceForm.invalid) return;
 
     const { manualPrice, manualPriceDate } = this.priceForm.value;
+    // Guaranteed non-null: the required validator above (priceForm.invalid check)
+    // ensures manualPrice has a value before this point.
+    if (manualPrice == null) return;
+
     const payload: UpdatePricePayload = {
-      manualPrice: manualPrice!,
+      manualPrice,
       ...(manualPriceDate ? { manualPriceDate } : {}),
     };
 
@@ -1321,10 +1334,14 @@ export class PortfolioDetailPage implements OnInit {
     if (this.esgForm.invalid) return;
 
     const { score, provider, date } = this.esgForm.value;
+    // Guaranteed non-null: the required validators above (esgForm.invalid check)
+    // ensure score and provider have values before this point.
+    if (score == null || !provider) return;
+
     this.esgSubmitting.set(true);
     this.esgSubmitError.set(null);
 
-    const payload = { score: score!, provider: provider!, ...(date ? { date } : {}) };
+    const payload = { score, provider, ...(date ? { date } : {}) };
 
     this.esgScoreService.create(this.esgTargetAssetId, payload).subscribe({
       next: () => {
@@ -1378,7 +1395,7 @@ export class PortfolioDetailPage implements OnInit {
     this.loadData();
   }
 
-  private onSubmitError(err: any) {
+  private onSubmitError(err: HttpErrorResponse) {
     this.submitting.set(false);
     if (err?.status === 409) {
       this.submitError.set('Cet actif est déjà dans le portefeuille.');

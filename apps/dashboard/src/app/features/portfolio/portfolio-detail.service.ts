@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin, map } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 
 export interface EsgScore {
   id: string;

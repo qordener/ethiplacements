@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { ScoreBadge } from '../score-badge/score-badge';
 
 export type ChangeClass = 'change-positive' | 'change-negative' | 'change-neutral';

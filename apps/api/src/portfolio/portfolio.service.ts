@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
@@ -41,8 +42,9 @@ export class PortfolioService {
   async update(id: string, dto: UpdatePortfolioDto) {
     try {
       return await this.prisma.portfolio.update({ where: { id }, data: dto });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`Portfolio ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`Portfolio ${id} introuvable`);
       throw e;
     }
   }
@@ -50,8 +52,9 @@ export class PortfolioService {
   async remove(id: string) {
     try {
       return await this.prisma.portfolio.delete({ where: { id } });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`Portfolio ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`Portfolio ${id} introuvable`);
       throw e;
     }
   }

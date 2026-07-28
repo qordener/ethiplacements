@@ -6,7 +6,6 @@ import { vi } from 'vitest';
 import { DashboardPage } from './dashboard.page';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
-import { ReactiveFormsModule } from '@angular/forms';
 
 const MOCK_PORTFOLIOS: PortfolioCardData[] = [
   { id: 'cuid-1', name: 'PEA Éthique',      description: 'Mon PEA ISR', totalValue: 11200, changePercent: 12,   esgScore: 75  }, // high

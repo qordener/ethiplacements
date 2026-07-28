@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 
 export interface TableColumn<T> {
   key:      keyof T;

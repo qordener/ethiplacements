@@ -37,8 +37,9 @@ export class PriceFetcherService {
       if (!price || price <= 0) return null;
 
       return { ticker, price, currency };
-    } catch (err: any) {
-      this.logger.warn(`Impossible de récupérer le prix de ${ticker}: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Impossible de récupérer le prix de ${ticker}: ${message}`);
       return null;
     }
   }

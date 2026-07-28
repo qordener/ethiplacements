@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateHoldingDto } from './dto/create-holding.dto';
 import { UpdateHoldingDto } from './dto/update-holding.dto';
@@ -13,8 +14,9 @@ export class HoldingService {
         data: { portfolioId, ...dto },
         include: { asset: true },
       });
-    } catch (e: any) {
-      if (e?.code === 'P2002') throw new ConflictException(`Cet actif est déjà dans le portefeuille`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2002') throw new ConflictException(`Cet actif est déjà dans le portefeuille`);
       throw e;
     }
   }
@@ -39,8 +41,9 @@ export class HoldingService {
   async update(id: string, dto: UpdateHoldingDto) {
     try {
       return await this.prisma.holding.update({ where: { id }, data: dto });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`Holding ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`Holding ${id} introuvable`);
       throw e;
     }
   }
@@ -48,8 +51,9 @@ export class HoldingService {
   async remove(id: string) {
     try {
       return await this.prisma.holding.delete({ where: { id } });
-    } catch (e: any) {
-      if (e?.code === 'P2025') throw new NotFoundException(`Holding ${id} introuvable`);
+    } catch (e: unknown) {
+      const code = (e as Prisma.PrismaClientKnownRequestError)?.code;
+      if (code === 'P2025') throw new NotFoundException(`Holding ${id} introuvable`);
       throw e;
     }
   }

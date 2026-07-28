@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { EsgScoreService } from './esg-score.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateEsgScoreDto } from './dto/create-esg-score.dto';
+import { UpdateEsgScoreDto } from './dto/update-esg-score.dto';
 
 class PrismaP2025Error extends Error {
   code = 'P2025';
@@ -42,7 +44,7 @@ describe('EsgScoreService', () => {
       const expected = { id: 'esg1', ...dto, date: new Date(), details: null };
       mockPrisma.esgScore.create.mockResolvedValue(expected);
 
-      const result = await service.create(dto as any);
+      const result = await service.create(dto as CreateEsgScoreDto & { assetId: string });
 
       expect(mockPrisma.esgScore.create).toHaveBeenCalledWith({ data: dto });
       expect(result).toEqual(expected);
@@ -58,7 +60,7 @@ describe('EsgScoreService', () => {
       const expected = { id: 'esg2', ...dto, date: new Date() };
       mockPrisma.esgScore.create.mockResolvedValue(expected);
 
-      const result = await service.create(dto as any);
+      const result = await service.create(dto as CreateEsgScoreDto & { assetId: string });
 
       expect(mockPrisma.esgScore.create).toHaveBeenCalledWith({ data: dto });
       expect(result.details).toBe(dto.details);
@@ -123,7 +125,7 @@ describe('EsgScoreService', () => {
       const updated = { id: 'esg1', assetId: 'asset1', score: 80, provider: 'MSCI' };
       mockPrisma.esgScore.update.mockResolvedValue(updated);
 
-      const result = await service.update('esg1', dto as any);
+      const result = await service.update('esg1', dto as UpdateEsgScoreDto);
 
       expect(mockPrisma.esgScore.update).toHaveBeenCalledWith({
         where: { id: 'esg1' },
@@ -135,7 +137,7 @@ describe('EsgScoreService', () => {
     it('should throw NotFoundException when ESG score does not exist (P2025)', async () => {
       mockPrisma.esgScore.update.mockRejectedValue(new PrismaP2025Error());
 
-      await expect(service.update('nonexistent', { score: 50 } as any)).rejects.toThrow(NotFoundException);
+      await expect(service.update('nonexistent', { score: 50 } as UpdateEsgScoreDto)).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -12,7 +12,7 @@ let modalIdCounter = 0;
       <div
         data-testid="modal-backdrop"
         class="modal-backdrop"
-        (click)="onBackdropClick($event)"
+        (click)="onBackdropClick()"
       >
         <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -- stops backdrop click propagation only, not itself an interactive control -->
         <div
@@ -141,7 +141,7 @@ export class Modal implements OnInit, OnDestroy {
     }
   }
 
-  onBackdropClick(event: MouseEvent) {
+  onBackdropClick() {
     this.closeRequest.emit();
   }
 

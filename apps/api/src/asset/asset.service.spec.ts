@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateAssetDto } from './dto/create-asset.dto';
+import { UpdateAssetDto } from './dto/update-asset.dto';
 
 class PrismaP2025Error extends Error {
   code = 'P2025';
@@ -47,7 +49,7 @@ describe('AssetService', () => {
       const expected = { id: 'cuid1', ...dto, holdings: [], esgScores: [] };
       mockPrisma.asset.create.mockResolvedValue(expected);
 
-      const result = await service.create(dto as any);
+      const result = await service.create(dto as CreateAssetDto);
 
       expect(mockPrisma.asset.create).toHaveBeenCalledWith({ data: dto });
       expect(result).toEqual(expected);
@@ -58,7 +60,7 @@ describe('AssetService', () => {
       const expected = { id: 'cuid2', ...dto, isin: null, sector: null };
       mockPrisma.asset.create.mockResolvedValue(expected);
 
-      await service.create(dto as any);
+      await service.create(dto as CreateAssetDto);
 
       expect(mockPrisma.asset.create).toHaveBeenCalledWith({ data: dto });
     });
@@ -66,7 +68,7 @@ describe('AssetService', () => {
     it('should throw ConflictException when ticker already exists (P2002)', async () => {
       mockPrisma.asset.create.mockRejectedValue(new PrismaP2002Error());
 
-      await expect(service.create({ name: 'Duplicate', ticker: 'CW8', type: 'ETF' } as any))
+      await expect(service.create({ name: 'Duplicate', ticker: 'CW8', type: 'ETF' } as CreateAssetDto))
         .rejects.toThrow(ConflictException);
     });
   });
@@ -135,7 +137,7 @@ describe('AssetService', () => {
       const updated = { id: 'cuid1', name: 'CW8', ticker: 'CW8', type: 'ETF', sector: 'Technology' };
       mockPrisma.asset.update.mockResolvedValue(updated);
 
-      const result = await service.update('cuid1', dto as any);
+      const result = await service.update('cuid1', dto as UpdateAssetDto);
 
       expect(mockPrisma.asset.update).toHaveBeenCalledWith({
         where: { id: 'cuid1' },
@@ -147,13 +149,13 @@ describe('AssetService', () => {
     it('should throw NotFoundException when asset does not exist (P2025)', async () => {
       mockPrisma.asset.update.mockRejectedValue(new PrismaP2025Error());
 
-      await expect(service.update('nonexistent', { sector: 'X' } as any)).rejects.toThrow(NotFoundException);
+      await expect(service.update('nonexistent', { sector: 'X' } as UpdateAssetDto)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ConflictException when updating to a duplicate ticker (P2002)', async () => {
       mockPrisma.asset.update.mockRejectedValue(new PrismaP2002Error());
 
-      await expect(service.update('cuid1', { ticker: 'BTC' } as any)).rejects.toThrow(ConflictException);
+      await expect(service.update('cuid1', { ticker: 'BTC' } as UpdateAssetDto)).rejects.toThrow(ConflictException);
     });
   });
 

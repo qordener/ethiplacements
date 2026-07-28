@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { AssetController } from './asset.controller';
 import { AssetService } from './asset.service';
+import { CreateAssetDto } from './dto/create-asset.dto';
+import { UpdateAssetDto } from './dto/update-asset.dto';
 
 const mockAssetService = {
   create: vi.fn(),
@@ -33,7 +35,7 @@ describe('AssetController', () => {
       const created = { id: 'cuid1', ...dto, isin: null, sector: null };
       mockAssetService.create.mockResolvedValue(created);
 
-      const result = await controller.create(dto as any);
+      const result = await controller.create(dto as CreateAssetDto);
 
       expect(mockAssetService.create).toHaveBeenCalledWith(dto);
       expect(result).toEqual(created);
@@ -80,7 +82,7 @@ describe('AssetController', () => {
       const updated = { id: 'cuid1', ticker: 'CW8', sector: 'Technology' };
       mockAssetService.update.mockResolvedValue(updated);
 
-      const result = await controller.update('cuid1', dto as any);
+      const result = await controller.update('cuid1', dto as UpdateAssetDto);
 
       expect(mockAssetService.update).toHaveBeenCalledWith('cuid1', dto);
       expect(result).toEqual(updated);
