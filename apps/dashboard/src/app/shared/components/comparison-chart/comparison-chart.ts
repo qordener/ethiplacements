@@ -102,7 +102,7 @@ const CHART_H = VIEWBOX_H - PAD_TOP - PAD_BOTTOM;
             }
           </span>
         }
-        <epi-info-tooltip text="Chaque série est indexée à 100 à son propre premier point disponible, pour comparer des évolutions relatives entre un portefeuille en euros et des indices/ETF en points — pas des valeurs absolues." />
+        <epi-info-tooltip text="Chaque série est indexée à 100 à son propre premier point disponible, pour comparer des évolutions relatives entre un portefeuille en euros et des indices/ETF en points — pas des valeurs absolues. Un placement éthique qui sous-performe un indice classique sur une période n'est pas un échec : exclure certains secteurs a un coût de rendement potentiel réel, documenté en finance, dans un sens comme dans l'autre." />
       </div>
     }
   `,

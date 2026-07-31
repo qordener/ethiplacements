@@ -4,12 +4,17 @@ Outil **local-first** de suivi de placements éthiques et ISR (Investissement So
 
 ## Objectif
 
-Permettre à un épargnant soucieux de l'impact de ses placements de :
+Permettre à un épargnant non-expert d'aligner son épargne avec ses valeurs, **en comprenant explicitement le compromis rendement/impact que ça implique** — pas de promesse que l'éthique paierait plus, ni moins.
 
 - Suivre ses portefeuilles (actions, ETF, obligations, livrets)
 - Visualiser et comparer les scores ESG de ses actifs
-- Identifier les labels obtenus (ISR, Greenfin, Solidaire/Finansol)
+- Identifier les labels obtenus (ISR, Greenfin, Solidaire/Finansol) **et ce que chacun implique réellement en termes de rendement attendu**
+- Comparer la performance de son portefeuille à des indices/ETF de référence (dont un proxy MSCI World SRI), pour objectiver plutôt que supposer
 - Suivre l'historique de ses transactions et la performance de ses positions
+
+### Un point d'honnêteté important
+
+Un dividende faible ou nul ne signifie pas qu'une entreprise n'est pas rentable — souvent l'inverse : elle réinvestit ses profits plutôt que de les distribuer. Ce qui construit une épargne sur le long terme, c'est le **rendement total** (plus-value + dividendes réinvestis), pas le dividende seul. Et exclure des secteurs entiers pour des raisons éthiques (énergies fossiles, armement…) a un coût d'opportunité réel et documenté en finance — rien ne garantit qu'un portefeuille éthique surperforme un indice classique, ni qu'il sous-performe. Ce sont deux choses différentes, et EthiPlacements essaie de les rendre lisibles plutôt que de les confondre.
 
 ## Architecture
 
@@ -108,11 +113,13 @@ commit
 
 ## Labels ESG couverts
 
-| Label | Description |
-|---|---|
-| **ISR** | Investissement Socialement Responsable — label public français |
-| **Greenfin** | Finance verte — label du Ministère de la Transition Écologique |
-| **Solidaire** | Épargne solidaire — label Finansol |
+Les trois labels ne représentent pas le même compromis rendement/impact — les confondre est la principale source de fausses attentes chez un épargnant non-expert :
+
+| Label | Description | Compromis rendement/impact |
+|---|---|---|
+| **ISR** | Investissement Socialement Responsable — label public français | Reste orienté performance financière : filtre/pondère selon des critères E/S/G, sans viser un rendement inférieur au marché. Le plus proche d'un placement "classique" avec un filtre éthique. |
+| **Greenfin** | Finance verte — label du Ministère de la Transition Écologique | Impact climat ciblé (exclut notamment le nucléaire et les fossiles). Univers d'investissement plus restreint qu'ISR → risque et rendement potentiellement plus dispersés. |
+| **Solidaire** (Finansol) | Épargne solidaire | **Rendement délibérément inférieur au marché par construction** — finance des projets à fort impact social (logement social, microfinance, insertion) en échange d'un impact mesurable, pas d'un rendement compétitif. Ce n'est pas un défaut du label, c'est son objet. |
 
 ## Schéma de données
 

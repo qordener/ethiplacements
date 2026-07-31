@@ -96,7 +96,7 @@ type PageState = 'loading' | 'loaded' | 'error';
               data-testid="esg-score"
               label="Score ESG"
               [value]="formatEsgScore(data()!.summary.esgScoreWeighted)"
-              tooltip="Score Environnemental, Social et de Gouvernance pondéré par la valeur de chaque position (0 = très mauvais, 100 = exemplaire). Les positions sans score ne sont pas comptabilisées."
+              tooltip="Score Environnemental, Social et de Gouvernance pondéré par la valeur de chaque position (0 = très mauvais, 100 = exemplaire). Les positions sans score ne sont pas comptabilisées. Ce score mesure un impact, pas un rendement attendu : un score élevé ne prédit ni sur-performance ni sous-performance financière."
             />
           </section>
 
