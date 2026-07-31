@@ -10,7 +10,10 @@ import { HoldingService } from '../holding.service';
 import { AssetService } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
 import { PortfolioService } from '../portfolio.service';
+import { DepositService } from '../deposit.service';
 import { CsvExportService } from '../../../shared/services/csv-export.service';
+
+const DEFAULT_CEILING = { totalDeposited: 0, ceiling: 150_000, remaining: 150_000, percentage: 0 };
 
 const MOCK_DETAIL: PortfolioDetailData = {
   portfolio: {
@@ -66,6 +69,12 @@ describe('PortfolioDetailPage', () => {
   let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; updatePrice: ReturnType<typeof vi.fn> };
   let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
   let mockPortfolioService: { updatePortfolio: ReturnType<typeof vi.fn> };
+  let mockDepositService: {
+    create: ReturnType<typeof vi.fn>;
+    findAllByPortfolio: ReturnType<typeof vi.fn>;
+    remove: ReturnType<typeof vi.fn>;
+    getCeiling: ReturnType<typeof vi.fn>;
+  };
   let mockCsvExportService: { download: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
@@ -74,6 +83,12 @@ describe('PortfolioDetailPage', () => {
     mockAssetService = { findAll: vi.fn(), create: vi.fn(), updatePrice: vi.fn() };
     mockEsgScoreService = { create: vi.fn() };
     mockPortfolioService = { updatePortfolio: vi.fn() };
+    mockDepositService = {
+      create: vi.fn(),
+      findAllByPortfolio: vi.fn().mockReturnValue(of([])),
+      remove: vi.fn().mockReturnValue(of(undefined)),
+      getCeiling: vi.fn().mockReturnValue(of(DEFAULT_CEILING)),
+    };
     mockCsvExportService = { download: vi.fn() };
 
     await TestBed.configureTestingModule({
@@ -85,6 +100,7 @@ describe('PortfolioDetailPage', () => {
         { provide: AssetService, useValue: mockAssetService },
         { provide: EsgScoreService, useValue: mockEsgScoreService },
         { provide: PortfolioService, useValue: mockPortfolioService },
+        { provide: DepositService, useValue: mockDepositService },
         { provide: CsvExportService, useValue: mockCsvExportService },
         {
           provide: ActivatedRoute,
@@ -953,6 +969,146 @@ describe('PortfolioDetailPage', () => {
         const items = fixture.nativeElement.querySelectorAll('[data-testid="ticker-suggestion-item"]');
         expect(items[0].textContent).toContain('BN');
         expect(items[0].textContent).toContain('Danone');
+      });
+    });
+  });
+
+  // ─── Plafond de versement PEA ────────────────────────────────────────────────
+
+  describe('plafond de versement PEA', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+    });
+
+    it('should load the ceiling stats and deposits on init', () => {
+      mockDepositService.getCeiling.mockReturnValue(of({ totalDeposited: 75_000, ceiling: 150_000, remaining: 75_000, percentage: 50 }));
+      fixture.detectChanges();
+
+      expect(mockDepositService.getCeiling).toHaveBeenCalledWith('cuid-1');
+      expect(mockDepositService.findAllByPortfolio).toHaveBeenCalledWith('cuid-1');
+    });
+
+    it('should pass the ceiling stats to the gauge component', () => {
+      mockDepositService.getCeiling.mockReturnValue(of({ totalDeposited: 75_000, ceiling: 150_000, remaining: 75_000, percentage: 50 }));
+      fixture.detectChanges();
+
+      const gauge = fixture.nativeElement.querySelector('[data-testid="pea-ceiling-gauge"]');
+      expect(gauge).toBeTruthy();
+      const value = fixture.nativeElement.querySelector('[data-testid="pea-ceiling-value"]');
+      expect(value.textContent).toContain('75');
+      expect(value.textContent).toContain('150');
+    });
+
+    it('should show the empty state when there are no deposits', () => {
+      fixture.detectChanges();
+      const empty = fixture.nativeElement.querySelector('[data-testid="deposits-empty"]');
+      expect(empty).toBeTruthy();
+    });
+
+    it('should list existing deposits', () => {
+      mockDepositService.findAllByPortfolio.mockReturnValue(of([
+        { id: 'd1', portfolioId: 'cuid-1', amount: 1000, date: '2026-01-15T00:00:00.000Z', notes: 'Virement mensuel' },
+        { id: 'd2', portfolioId: 'cuid-1', amount: 500, date: '2026-02-15T00:00:00.000Z', notes: null },
+      ]));
+      fixture.detectChanges();
+
+      const rows = fixture.nativeElement.querySelectorAll('[data-testid="deposit-row"]');
+      expect(rows).toHaveLength(2);
+      expect(rows[0].textContent).toContain('Virement mensuel');
+    });
+
+    describe('ouverture et soumission du formulaire', () => {
+      beforeEach(() => {
+        fixture.detectChanges();
+      });
+
+      it('should open the deposit modal on button click', () => {
+        const btn = fixture.nativeElement.querySelector('[data-testid="add-deposit-btn"]');
+        btn.click();
+        fixture.detectChanges();
+
+        const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+        expect(modal).toBeTruthy();
+      });
+
+      it('should call depositService.create with the form payload on submit', () => {
+        mockDepositService.create.mockReturnValue(of({ id: 'd-new', portfolioId: 'cuid-1', amount: 2000, date: '2026-03-01', notes: null }));
+
+        component.openAddDeposit();
+        component.depositForm.setValue({ amount: 2000, date: '2026-03-01', notes: '' });
+        component.onSubmitDeposit();
+
+        expect(mockDepositService.create).toHaveBeenCalledWith('cuid-1', { amount: 2000, date: '2026-03-01' });
+      });
+
+      it('should include notes in the payload when provided', () => {
+        mockDepositService.create.mockReturnValue(of({ id: 'd-new', portfolioId: 'cuid-1', amount: 2000, date: '2026-03-01', notes: 'Prime' }));
+
+        component.openAddDeposit();
+        component.depositForm.setValue({ amount: 2000, date: '2026-03-01', notes: 'Prime' });
+        component.onSubmitDeposit();
+
+        expect(mockDepositService.create).toHaveBeenCalledWith('cuid-1', { amount: 2000, date: '2026-03-01', notes: 'Prime' });
+      });
+
+      it('should not submit when the form is invalid', () => {
+        component.openAddDeposit();
+        component.depositForm.patchValue({ amount: null });
+        component.onSubmitDeposit();
+
+        expect(mockDepositService.create).not.toHaveBeenCalled();
+      });
+
+      it('should reload deposits and ceiling, and close the modal, after successful submission', () => {
+        mockDepositService.create.mockReturnValue(of({ id: 'd-new', portfolioId: 'cuid-1', amount: 2000, date: '2026-03-01', notes: null }));
+
+        component.openAddDeposit();
+        component.depositForm.setValue({ amount: 2000, date: '2026-03-01', notes: '' });
+        component.onSubmitDeposit();
+        fixture.detectChanges();
+
+        // init + after submit
+        expect(mockDepositService.findAllByPortfolio).toHaveBeenCalledTimes(2);
+        expect(mockDepositService.getCeiling).toHaveBeenCalledTimes(2);
+        expect(component.depositModalOpen()).toBe(false);
+      });
+
+      it('should show an error message when submission fails', () => {
+        mockDepositService.create.mockReturnValue(throwError(() => new Error('fail')));
+
+        component.openAddDeposit();
+        component.depositForm.setValue({ amount: 2000, date: '2026-03-01', notes: '' });
+        component.onSubmitDeposit();
+        fixture.detectChanges();
+
+        const error = fixture.nativeElement.querySelector('[data-testid="deposit-submit-error"]');
+        expect(error).toBeTruthy();
+      });
+    });
+
+    describe('suppression d\'un versement', () => {
+      beforeEach(() => {
+        mockDepositService.findAllByPortfolio.mockReturnValue(of([
+          { id: 'd1', portfolioId: 'cuid-1', amount: 1000, date: '2026-01-15T00:00:00.000Z', notes: null },
+        ]));
+        fixture.detectChanges();
+      });
+
+      it('should call depositService.remove with the deposit id', () => {
+        const btn = fixture.nativeElement.querySelector('[data-testid="delete-deposit-btn"]');
+        btn.click();
+
+        expect(mockDepositService.remove).toHaveBeenCalledWith('d1');
+      });
+
+      it('should reload deposits and ceiling after deletion', () => {
+        const btn = fixture.nativeElement.querySelector('[data-testid="delete-deposit-btn"]');
+        btn.click();
+        fixture.detectChanges();
+
+        // init + after delete
+        expect(mockDepositService.findAllByPortfolio).toHaveBeenCalledTimes(2);
+        expect(mockDepositService.getCeiling).toHaveBeenCalledTimes(2);
       });
     });
   });

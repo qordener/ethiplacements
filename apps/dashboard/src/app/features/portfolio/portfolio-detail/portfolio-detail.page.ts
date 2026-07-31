@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -11,6 +11,7 @@ import { HoldingService } from '../holding.service';
 import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
 import { PortfolioService } from '../portfolio.service';
+import { DepositService, Deposit, PeaCeiling } from '../deposit.service';
 import { CsvExportService } from '../../../shared/services/csv-export.service';
 import { MetricCard } from '../../../shared/components/metric-card/metric-card';
 import { ScoreBadge } from '../../../shared/components/score-badge/score-badge';
@@ -19,13 +20,14 @@ import { FormField } from '../../../shared/components/form-field/form-field';
 import { DonutChart, DonutSegment } from '../../../shared/components/donut-chart/donut-chart';
 import { BarChart, BarItem } from '../../../shared/components/bar-chart/bar-chart';
 import { LineChart, LinePoint } from '../../../shared/components/line-chart/line-chart';
+import { PeaCeilingGauge } from '../../../shared/components/pea-ceiling-gauge/pea-ceiling-gauge';
 
 type PageState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-portfolio-detail-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart],
+  imports: [RouterLink, DecimalPipe, DatePipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart, PeaCeilingGauge],
   template: `
     <div class="portfolio-detail">
 
@@ -95,6 +97,54 @@ type PageState = 'loading' | 'loaded' | 'error';
               [value]="formatEsgScore(data()!.summary.esgScoreWeighted)"
               tooltip="Score Environnemental, Social et de Gouvernance pondéré par la valeur de chaque position (0 = très mauvais, 100 = exemplaire). Les positions sans score ne sont pas comptabilisées."
             />
+          </section>
+
+          <section
+            data-testid="pea-ceiling-section"
+            class="portfolio-detail__pea-ceiling"
+            aria-label="Plafond de versement PEA"
+          >
+            <epi-pea-ceiling-gauge
+              [totalDeposited]="peaCeiling().totalDeposited"
+              [ceiling]="peaCeiling().ceiling"
+            />
+
+            <div class="deposits-list">
+              <div class="deposits-list__header">
+                <h3 class="deposits-list__title">Versements</h3>
+                <button
+                  data-testid="add-deposit-btn"
+                  type="button"
+                  class="btn btn--secondary"
+                  (click)="openAddDeposit()"
+                >+ Verser</button>
+              </div>
+
+              @if (deposits().length === 0) {
+                <p data-testid="deposits-empty" class="deposits-list__empty">
+                  Aucun versement enregistré pour ce portefeuille.
+                </p>
+              } @else {
+                <ul class="deposits-list__items">
+                  @for (deposit of deposits(); track deposit.id) {
+                    <li data-testid="deposit-row" class="deposits-list__item">
+                      <span class="deposits-list__date">{{ deposit.date | date:'dd/MM/yyyy' }}</span>
+                      <span class="deposits-list__amount">{{ deposit.amount | number:'1.2-2' }} €</span>
+                      @if (deposit.notes) {
+                        <span class="deposits-list__notes">{{ deposit.notes }}</span>
+                      }
+                      <button
+                        data-testid="delete-deposit-btn"
+                        type="button"
+                        class="btn-esg btn-esg--danger"
+                        [attr.aria-label]="'Supprimer ce versement du ' + (deposit.date | date:'dd/MM/yyyy')"
+                        (click)="removeDeposit(deposit.id)"
+                      >🗑</button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
           </section>
 
           <section
@@ -602,6 +652,79 @@ type PageState = 'loading' | 'loaded' | 'error';
         </button>
       </div>
     </epi-modal>
+
+    <!-- Modal de versement PEA -->
+    <epi-modal
+      [open]="depositModalOpen()"
+      title="Nouveau versement"
+      (closeRequest)="closeDepositModal()"
+    >
+      <form
+        id="deposit-form"
+        [formGroup]="depositForm"
+        (ngSubmit)="onSubmitDeposit()"
+        class="holding-form"
+      >
+        <epi-form-field label="Montant (€)" for="deposit-amount" [required]="true">
+          <input
+            id="deposit-amount"
+            data-testid="input-deposit-amount"
+            type="number"
+            class="form-input"
+            formControlName="amount"
+            min="0.01"
+            step="any"
+            placeholder="ex : 1000"
+          />
+        </epi-form-field>
+
+        <epi-form-field label="Date" for="deposit-date" [required]="true">
+          <input
+            id="deposit-date"
+            data-testid="input-deposit-date"
+            type="date"
+            class="form-input"
+            formControlName="date"
+          />
+        </epi-form-field>
+
+        <epi-form-field label="Note (optionnel)" for="deposit-notes">
+          <input
+            id="deposit-notes"
+            data-testid="input-deposit-notes"
+            type="text"
+            class="form-input"
+            formControlName="notes"
+            placeholder="ex : Virement mensuel"
+          />
+        </epi-form-field>
+
+        @if (depositSubmitError()) {
+          <p data-testid="deposit-submit-error" class="holding-form__error" role="alert">
+            {{ depositSubmitError() }}
+          </p>
+        }
+      </form>
+
+      <div slot="footer">
+        <button
+          type="button"
+          class="btn btn--secondary"
+          (click)="closeDepositModal()"
+          [disabled]="depositSubmitting()"
+        >
+          Annuler
+        </button>
+        <button
+          type="submit"
+          form="deposit-form"
+          class="btn btn--primary"
+          [disabled]="depositSubmitting() || depositForm.invalid"
+        >
+          {{ depositSubmitting() ? 'Enregistrement…' : 'Verser' }}
+        </button>
+      </div>
+    </epi-modal>
   `,
   styles: [`
     .portfolio-detail {
@@ -679,8 +802,74 @@ type PageState = 'loading' | 'loaded' | 'error';
 
     .portfolio-detail__history,
     .portfolio-detail__allocation,
-    .portfolio-detail__esg-chart {
+    .portfolio-detail__esg-chart,
+    .portfolio-detail__pea-ceiling {
       margin-bottom: var(--space-8, 32px);
+    }
+
+    .portfolio-detail__pea-ceiling {
+      background: var(--color-surface, #fff);
+      border: 1px solid var(--color-border, #e8e8f0);
+      border-radius: var(--radius-md, 8px);
+      padding: var(--space-4, 16px);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4, 16px);
+    }
+
+    .deposits-list__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-2, 8px);
+    }
+
+    .deposits-list__title {
+      font-size: var(--text-sm, 0.875rem);
+      font-weight: 600;
+      color: var(--color-text-muted, #4a4a6a);
+      margin: 0;
+    }
+
+    .deposits-list__empty {
+      color: var(--color-text-subtle, #6a6a8a);
+      font-style: italic;
+      font-size: var(--text-sm, 0.875rem);
+      margin: 0;
+    }
+
+    .deposits-list__items {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1, 4px);
+    }
+
+    .deposits-list__item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3, 12px);
+      padding: var(--space-2, 8px) 0;
+      border-bottom: 1px solid var(--color-surface-alt, #f0f0f8);
+      font-size: var(--text-sm, 0.875rem);
+    }
+
+    .deposits-list__date {
+      color: var(--color-text-subtle, #6a6a8a);
+      font-family: var(--font-mono, monospace);
+    }
+
+    .deposits-list__amount {
+      font-weight: 600;
+      font-family: var(--font-mono, monospace);
+      color: var(--color-text, #1a1a2e);
+    }
+
+    .deposits-list__notes {
+      color: var(--color-text-muted, #4a4a6a);
+      flex: 1;
     }
 
     .history-range-btns {
@@ -959,6 +1148,7 @@ export class PortfolioDetailPage implements OnInit {
   private readonly assetService = inject(AssetService);
   private readonly esgScoreService = inject(EsgScoreService);
   private readonly portfolioService = inject(PortfolioService);
+  private readonly depositService = inject(DepositService);
   private readonly csvExportService = inject(CsvExportService);
 
   readonly assetTypes: AssetType[] = ['STOCK', 'ETF', 'BOND', 'CRYPTO', 'OTHER'];
@@ -1139,6 +1329,20 @@ export class PortfolioDetailPage implements OnInit {
     score:    new FormControl<number>(0, [Validators.required, Validators.min(0), Validators.max(100)]),
     provider: new FormControl('manual',  [Validators.required]),
     date:     new FormControl(new Date().toISOString().slice(0, 10)),
+  });
+
+  // ─── Plafond de versement PEA ────────────────────────────────────────────────
+  peaCeiling = signal<PeaCeiling>({ totalDeposited: 0, ceiling: 150_000, remaining: 150_000, percentage: 0 });
+  deposits   = signal<Deposit[]>([]);
+
+  depositModalOpen   = signal(false);
+  depositSubmitting  = signal(false);
+  depositSubmitError = signal<string | null>(null);
+
+  depositForm = new FormGroup({
+    amount: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
+    date:   new FormControl(new Date().toISOString().slice(0, 10), [Validators.required]),
+    notes:  new FormControl(''),
   });
 
   tickerError    = signal<string | null>(null);
@@ -1376,6 +1580,8 @@ export class PortfolioDetailPage implements OnInit {
         this.data.set(detail);
         this.state.set('loaded');
         this.loadHistory();
+        this.loadDeposits();
+        this.loadPeaCeiling();
       },
       error: () => this.state.set('error'),
     });
@@ -1385,6 +1591,64 @@ export class PortfolioDetailPage implements OnInit {
     this.portfolioDetailService.getHistory(this.portfolioId, this.historyRange()).subscribe({
       next: (points) => this.historyPoints.set(points),
       error: () => this.historyPoints.set([]),
+    });
+  }
+
+  private loadDeposits() {
+    this.depositService.findAllByPortfolio(this.portfolioId).subscribe({
+      next: (deposits) => this.deposits.set(deposits),
+      error: () => this.deposits.set([]),
+    });
+  }
+
+  private loadPeaCeiling() {
+    this.depositService.getCeiling(this.portfolioId).subscribe({
+      next: (ceiling) => this.peaCeiling.set(ceiling),
+      error: () => this.peaCeiling.set({ totalDeposited: 0, ceiling: 150_000, remaining: 150_000, percentage: 0 }),
+    });
+  }
+
+  openAddDeposit() {
+    this.depositModalOpen.set(true);
+    this.depositSubmitError.set(null);
+    this.depositForm.reset({ amount: null, date: new Date().toISOString().slice(0, 10), notes: '' });
+  }
+
+  closeDepositModal() {
+    this.depositModalOpen.set(false);
+  }
+
+  onSubmitDeposit() {
+    if (this.depositForm.invalid) return;
+
+    const { amount, date, notes } = this.depositForm.value;
+    // Guaranteed non-null: the required validators above (depositForm.invalid check)
+    // ensure amount and date have values before this point.
+    if (amount == null || !date) return;
+
+    this.depositSubmitting.set(true);
+    this.depositSubmitError.set(null);
+
+    this.depositService.create(this.portfolioId, { amount, date, ...(notes ? { notes } : {}) }).subscribe({
+      next: () => {
+        this.depositSubmitting.set(false);
+        this.depositModalOpen.set(false);
+        this.loadDeposits();
+        this.loadPeaCeiling();
+      },
+      error: () => {
+        this.depositSubmitting.set(false);
+        this.depositSubmitError.set('Une erreur est survenue lors de l\'enregistrement du versement.');
+      },
+    });
+  }
+
+  removeDeposit(id: string) {
+    this.depositService.remove(id).subscribe({
+      next: () => {
+        this.loadDeposits();
+        this.loadPeaCeiling();
+      },
     });
   }
 
