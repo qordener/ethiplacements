@@ -34,6 +34,7 @@ model Portfolio {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   holdings    Holding[]
+  deposits    Deposit[]
 }
 
 model Asset {
@@ -85,6 +86,20 @@ model Transaction {
   notes     String?
   createdAt DateTime        @default(now())
   holding   Holding         @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+}
+
+// Versement de liquidités dans l'enveloppe du portefeuille (ex : PEA).
+// Distinct des Transaction (achat/vente d'un actif) : un arbitrage interne
+// (vente puis rachat) ne doit jamais compter comme un nouveau versement,
+// donc le plafond réglementaire se calcule sur ce modèle, pas sur les BUY.
+model Deposit {
+  id          String    @id @default(cuid())
+  portfolioId String
+  amount      Float
+  date        DateTime
+  notes       String?
+  createdAt   DateTime  @default(now())
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 }
 
 model EsgScore {

@@ -9,6 +9,7 @@ import { EsgScoreModule } from '../esg-score/esg-score.module';
 import { HoldingModule } from '../holding/holding.module';
 import { TransactionModule } from '../transaction/transaction.module';
 import { PriceModule } from '../price/price.module';
+import { DepositModule } from '../deposit/deposit.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PriceModule } from '../price/price.module';
     HoldingModule,
     TransactionModule,
     PriceModule,
+    DepositModule,
   ],
   controllers: [AppController],
   providers: [AppService],
