@@ -64,7 +64,7 @@ const MOCK_DETAIL: PortfolioDetailData = {
 describe('PortfolioDetailPage', () => {
   let fixture: ComponentFixture<PortfolioDetailPage>;
   let component: PortfolioDetailPage;
-  let mockService: { getPortfolioDetail: ReturnType<typeof vi.fn>; getHistory: ReturnType<typeof vi.fn> };
+  let mockService: { getPortfolioDetail: ReturnType<typeof vi.fn>; getHistory: ReturnType<typeof vi.fn>; getComparison: ReturnType<typeof vi.fn> };
   let mockHoldingService: { create: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> };
   let mockAssetService: { findAll: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; updatePrice: ReturnType<typeof vi.fn> };
   let mockEsgScoreService: { create: ReturnType<typeof vi.fn> };
@@ -78,7 +78,11 @@ describe('PortfolioDetailPage', () => {
   let mockCsvExportService: { download: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    mockService = { getPortfolioDetail: vi.fn(), getHistory: vi.fn().mockReturnValue(of([])) };
+    mockService = {
+      getPortfolioDetail: vi.fn(),
+      getHistory: vi.fn().mockReturnValue(of([])),
+      getComparison: vi.fn().mockReturnValue(of({ portfolio: [], benchmarks: { cac40: [], msciWorldSri: [] } })),
+    };
     mockHoldingService = { create: vi.fn(), remove: vi.fn() };
     mockAssetService = { findAll: vi.fn(), create: vi.fn(), updatePrice: vi.fn() };
     mockEsgScoreService = { create: vi.fn() };
@@ -970,6 +974,56 @@ describe('PortfolioDetailPage', () => {
         expect(items[0].textContent).toContain('BN');
         expect(items[0].textContent).toContain('Danone');
       });
+    });
+  });
+
+  // ─── Comparateur de performance ──────────────────────────────────────────────
+
+  describe('comparateur de performance', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+    });
+
+    it('should load the comparison data on init with the default range', () => {
+      fixture.detectChanges();
+      expect(mockService.getComparison).toHaveBeenCalledWith('cuid-1', '1m');
+    });
+
+    it('should render the comparison chart', () => {
+      fixture.detectChanges();
+      const chart = fixture.nativeElement.querySelector('epi-comparison-chart');
+      expect(chart).toBeTruthy();
+    });
+
+    it('should build a series for the portfolio and both benchmarks', () => {
+      mockService.getComparison.mockReturnValue(of({
+        portfolio: [{ date: '2026-01-01', value: 1000 }],
+        benchmarks: {
+          cac40: [{ date: '2026-01-01', value: 7500 }],
+          msciWorldSri: [{ date: '2026-01-01', value: 96.5 }],
+        },
+      }));
+      fixture.detectChanges();
+
+      const series = component.comparisonSeries();
+      expect(series.map((s) => s.key)).toEqual(['portfolio', 'cac40', 'msciWorldSri']);
+      expect(series[0].points).toEqual([{ date: '2026-01-01', value: 1000 }]);
+    });
+
+    it('should reset to empty series when the request fails', () => {
+      mockService.getComparison.mockReturnValue(throwError(() => new Error('fail')));
+      fixture.detectChanges();
+
+      expect(component.comparisonSeries()).toEqual([]);
+    });
+
+    it('should reload the comparison when the history range changes', () => {
+      fixture.detectChanges();
+      mockService.getComparison.mockClear();
+
+      component.setHistoryRange('1y');
+
+      expect(mockService.getComparison).toHaveBeenCalledWith('cuid-1', '1y');
     });
   });
 

@@ -55,6 +55,14 @@ export interface PortfolioDetailData {
   summary: PortfolioSummary;
 }
 
+export interface PortfolioComparison {
+  portfolio: HistoryPoint[];
+  benchmarks: {
+    cac40: HistoryPoint[];
+    msciWorldSri: HistoryPoint[];
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class PortfolioDetailService {
   private readonly http = inject(HttpClient);
@@ -68,6 +76,12 @@ export class PortfolioDetailService {
 
   getHistory(id: string, range: HistoryRange): Observable<HistoryPoint[]> {
     return this.http.get<HistoryPoint[]>(`/api/portfolios/${id}/history`, {
+      params: { range },
+    });
+  }
+
+  getComparison(id: string, range: HistoryRange): Observable<PortfolioComparison> {
+    return this.http.get<PortfolioComparison>(`/api/portfolios/${id}/comparison`, {
       params: { range },
     });
   }

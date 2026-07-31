@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 
-import { PortfolioDetailService, PortfolioDetailData } from './portfolio-detail.service';
+import { PortfolioDetailService, PortfolioDetailData, PortfolioComparison } from './portfolio-detail.service';
 
 const MOCK_PORTFOLIO = {
   id: 'cuid-1',
@@ -133,6 +133,34 @@ describe('PortfolioDetailService', () => {
 
       httpMock.expectOne('/api/portfolios/other-id').flush(MOCK_PORTFOLIO);
       httpMock.expectOne('/api/portfolios/other-id/summary').flush(MOCK_SUMMARY);
+    });
+  });
+
+  describe('getComparison', () => {
+    const MOCK_COMPARISON: PortfolioComparison = {
+      portfolio: [{ date: '2026-01-01', value: 1500 }],
+      benchmarks: {
+        cac40: [{ date: '2026-01-01', value: 7500 }],
+        msciWorldSri: [{ date: '2026-01-01', value: 96.5 }],
+      },
+    };
+
+    it('should call GET /api/portfolios/:id/comparison with the range param', () => {
+      service.getComparison('cuid-1', '1m').subscribe();
+
+      const req = httpMock.expectOne((r) => r.url === '/api/portfolios/cuid-1/comparison');
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.get('range')).toBe('1m');
+      req.flush(MOCK_COMPARISON);
+    });
+
+    it('should return the portfolio and benchmark series', async () => {
+      let result: PortfolioComparison | undefined;
+      service.getComparison('cuid-1', '1y').subscribe((data) => (result = data));
+
+      httpMock.expectOne((r) => r.url === '/api/portfolios/cuid-1/comparison').flush(MOCK_COMPARISON);
+
+      expect(result).toEqual(MOCK_COMPARISON);
     });
   });
 });

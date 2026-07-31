@@ -7,6 +7,7 @@ import { switchMap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 import { PortfolioDetailService, PortfolioDetailData, Holding, EsgScore, HistoryRange } from '../portfolio-detail.service';
+import { ComparisonChart, ComparisonSeries } from '../../../shared/components/comparison-chart/comparison-chart';
 import { HoldingService } from '../holding.service';
 import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
@@ -27,7 +28,7 @@ type PageState = 'loading' | 'loaded' | 'error';
 @Component({
   selector: 'app-portfolio-detail-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, DatePipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart, PeaCeilingGauge],
+  imports: [RouterLink, DecimalPipe, DatePipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart, PeaCeilingGauge, ComparisonChart],
   template: `
     <div class="portfolio-detail">
 
@@ -171,6 +172,17 @@ type PageState = 'loading' | 'loaded' | 'error';
               [points]="historyPoints()"
               ariaLabel="Évolution de la valeur du portefeuille"
             />
+          </section>
+
+          <section
+            data-testid="comparison-chart-section"
+            class="portfolio-detail__comparison"
+            aria-label="Comparateur de performance"
+          >
+            <h2 class="portfolio-detail__section-title">
+              Comparateur de performance
+            </h2>
+            <epi-comparison-chart [series]="comparisonSeries()" />
           </section>
 
           @if (allocationSegments().length > 0) {
@@ -803,6 +815,7 @@ type PageState = 'loading' | 'loaded' | 'error';
     .portfolio-detail__history,
     .portfolio-detail__allocation,
     .portfolio-detail__esg-chart,
+    .portfolio-detail__comparison,
     .portfolio-detail__pea-ceiling {
       margin-bottom: var(--space-8, 32px);
     }
@@ -1180,6 +1193,9 @@ export class PortfolioDetailPage implements OnInit {
   ];
   historyRange  = signal<HistoryRange>('1m');
   historyPoints = signal<LinePoint[]>([]);
+
+  // ─── Comparateur de performance ──────────────────────────────────────────────
+  comparisonSeries = signal<ComparisonSeries[]>([]);
 
   readonly esgBars = computed<BarItem[]>(() => {
     const holdings = this.data()?.portfolio.holdings ?? [];
@@ -1571,6 +1587,7 @@ export class PortfolioDetailPage implements OnInit {
   setHistoryRange(range: HistoryRange) {
     this.historyRange.set(range);
     this.loadHistory();
+    this.loadComparison();
   }
 
   private loadData() {
@@ -1580,6 +1597,7 @@ export class PortfolioDetailPage implements OnInit {
         this.data.set(detail);
         this.state.set('loaded');
         this.loadHistory();
+        this.loadComparison();
         this.loadDeposits();
         this.loadPeaCeiling();
       },
@@ -1591,6 +1609,17 @@ export class PortfolioDetailPage implements OnInit {
     this.portfolioDetailService.getHistory(this.portfolioId, this.historyRange()).subscribe({
       next: (points) => this.historyPoints.set(points),
       error: () => this.historyPoints.set([]),
+    });
+  }
+
+  private loadComparison() {
+    this.portfolioDetailService.getComparison(this.portfolioId, this.historyRange()).subscribe({
+      next: (comparison) => this.comparisonSeries.set([
+        { key: 'portfolio', label: 'Portefeuille', color: '#1b7a4d', points: comparison.portfolio },
+        { key: 'cac40', label: 'CAC 40', color: '#2563eb', points: comparison.benchmarks.cac40 },
+        { key: 'msciWorldSri', label: 'MSCI World SRI (ETF, proxy)', color: '#b45309', points: comparison.benchmarks.msciWorldSri },
+      ]),
+      error: () => this.comparisonSeries.set([]),
     });
   }
 
