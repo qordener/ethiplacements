@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PortfolioService } from './portfolio.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PriceFetcherService } from '../price/price-fetcher.service';
 
 class PrismaP2025Error extends Error {
   code = 'P2025';
@@ -19,6 +20,8 @@ const mockPrisma = {
   },
 };
 
+const mockPriceFetcher = { fetchHistory: vi.fn() };
+
 describe('PortfolioService', () => {
   let service: PortfolioService;
 
@@ -27,6 +30,7 @@ describe('PortfolioService', () => {
       providers: [
         PortfolioService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: PriceFetcherService, useValue: mockPriceFetcher },
       ],
     }).compile();
 

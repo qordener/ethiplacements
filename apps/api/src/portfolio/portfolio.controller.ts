@@ -58,4 +58,12 @@ export class PortfolioController {
   ) {
     return this.portfolioService.getHistory(id, range ?? '1m');
   }
+
+  @Get(':id/comparison')
+  getComparison(
+    @Param('id') id: string,
+    @Query('range') range?: HistoryRange,
+  ) {
+    return this.portfolioService.getComparison(id, range ?? '1m');
+  }
 }

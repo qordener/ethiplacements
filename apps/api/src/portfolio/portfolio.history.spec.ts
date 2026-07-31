@@ -3,11 +3,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PortfolioService } from './portfolio.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PriceFetcherService } from '../price/price-fetcher.service';
 
 const mockPrisma = {
   portfolio: { findUnique: vi.fn() },
   priceSnapshot: { findMany: vi.fn() },
 };
+
+const mockPriceFetcher = { fetchHistory: vi.fn() };
 
 // Helper : crée un snapshot à une date donnée (YYYY-MM-DD HH:mm)
 function snap(assetId: string, price: number, isoDate: string) {
@@ -22,6 +25,7 @@ describe('PortfolioService.getHistory', () => {
       providers: [
         PortfolioService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: PriceFetcherService, useValue: mockPriceFetcher },
       ],
     }).compile();
 

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PortfolioService } from './portfolio.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PriceFetcherService } from '../price/price-fetcher.service';
 
 const mockPrisma = {
   portfolio: {
@@ -14,6 +15,8 @@ const mockPrisma = {
   },
 };
 
+const mockPriceFetcher = { fetchHistory: vi.fn() };
+
 describe('PortfolioService.getSummary', () => {
   let service: PortfolioService;
 
@@ -22,6 +25,7 @@ describe('PortfolioService.getSummary', () => {
       providers: [
         PortfolioService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: PriceFetcherService, useValue: mockPriceFetcher },
       ],
     }).compile();
 

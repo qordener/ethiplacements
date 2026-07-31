@@ -1,8 +1,25 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PriceFetcherService } from '../price/price-fetcher.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
+
+// Benchmarks fixes pour le comparateur de performance. Le MSCI World "pur"
+// n'est pas directement récupérable en tant qu'indice ; on utilise donc un
+// ETF qui le réplique explicitement — divulgué comme tel dans l'UI plutôt
+// que présenté comme l'indice lui-même, pour ne pas donner une fausse
+// précision sur ce qui est réellement comparé.
+const CAC40_TICKER = '^FCHI';
+const MSCI_WORLD_SRI_TICKER = 'SUSW.L'; // iShares MSCI World SRI UCITS ETF EUR (Acc)
+
+export interface PortfolioComparison {
+  portfolio: HistoryPoint[];
+  benchmarks: {
+    cac40: HistoryPoint[];
+    msciWorldSri: HistoryPoint[];
+  };
+}
 
 export type HistoryRange = '1m' | '3m' | '1y';
 
@@ -22,7 +39,10 @@ export interface PortfolioSummary {
 
 @Injectable()
 export class PortfolioService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly priceFetcher: PriceFetcherService,
+  ) {}
 
   create(dto: CreatePortfolioDto) {
     return this.prisma.portfolio.create({ data: dto });
@@ -193,5 +213,24 @@ export class PortfolioService {
     }
 
     return points;
+  }
+
+  async getComparison(id: string, range: HistoryRange = '1m'): Promise<PortfolioComparison> {
+    // getHistory effectue la vérification d'existence du portefeuille (NotFoundException) ;
+    // on ne lance les fetchs des benchmarks qu'une fois cette vérification passée.
+    const portfolioHistory = await this.getHistory(id, range);
+
+    const [cac40, msciWorldSri] = await Promise.all([
+      this.priceFetcher.fetchHistory(CAC40_TICKER, range),
+      this.priceFetcher.fetchHistory(MSCI_WORLD_SRI_TICKER, range),
+    ]);
+
+    return {
+      portfolio: portfolioHistory,
+      benchmarks: {
+        cac40: cac40.map((p) => ({ date: p.date, value: p.price })),
+        msciWorldSri: msciWorldSri.map((p) => ({ date: p.date, value: p.price })),
+      },
+    };
   }
 }

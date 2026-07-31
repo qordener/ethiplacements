@@ -12,6 +12,7 @@ const mockPortfolioService = {
   remove: vi.fn(),
   getSummary: vi.fn(),
   getHistory: vi.fn(),
+  getComparison: vi.fn(),
 };
 
 describe('PortfolioController', () => {
@@ -122,6 +123,28 @@ describe('PortfolioController', () => {
 
       expect(mockPortfolioService.getHistory).toHaveBeenCalledWith('p1', '3m');
       expect(result).toEqual(points);
+    });
+  });
+
+  // ─── GET /portfolios/:id/comparison ──────────────────────────────────────
+
+  describe('getComparison', () => {
+    it('should call service.getComparison with default range 1m', async () => {
+      mockPortfolioService.getComparison.mockResolvedValue({ portfolio: [], benchmarks: { cac40: [], msciWorldSri: [] } });
+
+      await controller.getComparison('p1', undefined);
+
+      expect(mockPortfolioService.getComparison).toHaveBeenCalledWith('p1', '1m');
+    });
+
+    it('should forward the range query param to the service', async () => {
+      const comparison = { portfolio: [{ date: '2026-04-01', value: 1500 }], benchmarks: { cac40: [], msciWorldSri: [] } };
+      mockPortfolioService.getComparison.mockResolvedValue(comparison);
+
+      const result = await controller.getComparison('p1', '1y');
+
+      expect(mockPortfolioService.getComparison).toHaveBeenCalledWith('p1', '1y');
+      expect(result).toEqual(comparison);
     });
   });
 });

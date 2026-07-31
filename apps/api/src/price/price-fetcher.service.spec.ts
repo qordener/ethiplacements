@@ -98,6 +98,82 @@ describe('PriceFetcherService', () => {
     });
   });
 
+  // ─── fetchHistory ─────────────────────────────────────────────────────────
+
+  describe('fetchHistory', () => {
+    const makeHistoryResponse = (timestamps: number[], closes: (number | null)[]) => ({
+      data: {
+        chart: {
+          result: [{
+            timestamp: timestamps,
+            indicators: { quote: [{ close: closes }] },
+          }],
+        },
+      },
+    });
+
+    it('should return one point per timestamp with date and price', async () => {
+      mockedAxios.get = vi.fn().mockResolvedValue(
+        makeHistoryResponse([1735689600, 1735776000], [7500.5, 7550.25])
+      );
+
+      const result = await service.fetchHistory('^FCHI', '1m');
+
+      expect(result).toEqual([
+        { date: '2025-01-01', price: 7500.5 },
+        { date: '2025-01-02', price: 7550.25 },
+      ]);
+    });
+
+    it('should skip null closes (non-trading days at range edges)', async () => {
+      mockedAxios.get = vi.fn().mockResolvedValue(
+        makeHistoryResponse([1735689600, 1735776000, 1735862400], [null, 7550.25, null])
+      );
+
+      const result = await service.fetchHistory('^FCHI', '1m');
+
+      expect(result).toEqual([{ date: '2025-01-02', price: 7550.25 }]);
+    });
+
+    it('should return empty array when chart result is empty', async () => {
+      mockedAxios.get = vi.fn().mockResolvedValue({ data: { chart: { result: null } } });
+
+      const result = await service.fetchHistory('UNKNOWN', '1m');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when axios throws (network error)', async () => {
+      mockedAxios.get = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+
+      const result = await service.fetchHistory('^FCHI', '1m');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should map the range parameter to the Yahoo range query param', async () => {
+      mockedAxios.get = vi.fn().mockResolvedValue(makeHistoryResponse([], []));
+
+      await service.fetchHistory('^FCHI', '3m');
+
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.stringContaining('range=3mo'),
+        expect.any(Object),
+      );
+    });
+
+    it('should map the 1y range to Yahoo\'s 1y range param', async () => {
+      mockedAxios.get = vi.fn().mockResolvedValue(makeHistoryResponse([], []));
+
+      await service.fetchHistory('^FCHI', '1y');
+
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.stringContaining('range=1y'),
+        expect.any(Object),
+      );
+    });
+  });
+
   // ─── fetchPrices ──────────────────────────────────────────────────────────
 
   describe('fetchPrices', () => {
