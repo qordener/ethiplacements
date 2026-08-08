@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import { DashboardPage } from './dashboard.page';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
+import { EsgLabelService } from '../portfolio/esg-label.service';
 
 const MOCK_PORTFOLIOS: PortfolioCardData[] = [
   { id: 'cuid-1', name: 'PEA Éthique',      description: 'Mon PEA ISR', totalValue: 11200, changePercent: 12,   esgScore: 75  }, // high
@@ -19,6 +20,7 @@ describe('DashboardPage', () => {
   let component: DashboardPage;
   let mockDashboardService: { getPortfoliosWithSummary: ReturnType<typeof vi.fn> };
   let mockPortfolioService: { removePortfolio: ReturnType<typeof vi.fn>; updatePortfolio: ReturnType<typeof vi.fn> };
+  let mockEsgLabelService: { sync: ReturnType<typeof vi.fn> };
   let router: Router;
 
   beforeEach(async () => {
@@ -27,6 +29,7 @@ describe('DashboardPage', () => {
       removePortfolio: vi.fn(),
       updatePortfolio: vi.fn(),
     };
+    mockEsgLabelService = { sync: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [DashboardPage],
@@ -34,6 +37,7 @@ describe('DashboardPage', () => {
         provideRouter([]),
         { provide: DashboardService, useValue: mockDashboardService },
         { provide: PortfolioService, useValue: mockPortfolioService },
+        { provide: EsgLabelService, useValue: mockEsgLabelService },
       ],
     }).compileComponents();
 
@@ -410,6 +414,79 @@ describe('DashboardPage', () => {
       fixture.detectChanges();
       const noResult = fixture.nativeElement.querySelector('[data-testid="filter-no-results"]');
       expect(noResult).toBeNull();
+    });
+  });
+
+  // ─── Synchronisation des labels ESG ──────────────────────────────────────────
+
+  describe('synchronisation des labels ESG', () => {
+    beforeEach(() => {
+      mockDashboardService.getPortfoliosWithSummary.mockReturnValue(of(MOCK_PORTFOLIOS));
+      fixture.detectChanges();
+    });
+
+    it('should open the sync modal on button click', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="open-label-sync-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('[data-testid="label-sync-modal"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should call esgLabelService.sync with the entered URL', () => {
+      mockEsgLabelService.sync.mockReturnValue(of({ totalRows: 5, matched: 2, skippedLabels: 1, unmatchedIsin: 2 }));
+
+      component.openLabelSyncModal();
+      component.labelSyncForm.controls['url'].setValue('https://example.com/referentiel.xlsx');
+      component.confirmLabelSync();
+
+      expect(mockEsgLabelService.sync).toHaveBeenCalledWith('https://example.com/referentiel.xlsx');
+    });
+
+    it('should not submit when the URL field is empty', () => {
+      component.openLabelSyncModal();
+      component.confirmLabelSync();
+
+      expect(mockEsgLabelService.sync).not.toHaveBeenCalled();
+    });
+
+    it('should display the sync result on success', () => {
+      mockEsgLabelService.sync.mockReturnValue(of({ totalRows: 5, matched: 2, skippedLabels: 1, unmatchedIsin: 2 }));
+
+      component.openLabelSyncModal();
+      component.labelSyncForm.controls['url'].setValue('https://example.com/referentiel.xlsx');
+      component.confirmLabelSync();
+      fixture.detectChanges();
+
+      const result = fixture.nativeElement.querySelector('[data-testid="label-sync-result"]');
+      expect(result.textContent).toContain('2');
+      expect(result.textContent).toContain('5');
+    });
+
+    it('should display an error message when the sync fails', () => {
+      mockEsgLabelService.sync.mockReturnValue(throwError(() => new Error('fail')));
+
+      component.openLabelSyncModal();
+      component.labelSyncForm.controls['url'].setValue('https://example.com/referentiel.xlsx');
+      component.confirmLabelSync();
+      fixture.detectChanges();
+
+      const error = fixture.nativeElement.querySelector('[data-testid="label-sync-error"]');
+      expect(error).toBeTruthy();
+    });
+
+    it('should reset the form and previous result when reopening the modal', () => {
+      mockEsgLabelService.sync.mockReturnValue(of({ totalRows: 5, matched: 2, skippedLabels: 1, unmatchedIsin: 2 }));
+      component.openLabelSyncModal();
+      component.labelSyncForm.controls['url'].setValue('https://example.com/referentiel.xlsx');
+      component.confirmLabelSync();
+
+      component.closeLabelSyncModal();
+      component.openLabelSyncModal();
+
+      expect(component.labelSyncForm.controls['url'].value).toBe('');
+      expect(component.labelSyncResult()).toBeNull();
     });
   });
 });

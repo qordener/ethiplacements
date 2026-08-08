@@ -9,6 +9,13 @@ export interface EsgScore {
   date: string;
 }
 
+export interface AssetLabel {
+  id: string;
+  label: string;
+  source: string;
+  asOfDate: string;
+}
+
 export interface Asset {
   id: string;
   name: string;
@@ -16,6 +23,7 @@ export interface Asset {
   type: string;
   manualPrice: number | null;
   esgScores: EsgScore[];
+  labels?: AssetLabel[];
 }
 
 export interface Holding {

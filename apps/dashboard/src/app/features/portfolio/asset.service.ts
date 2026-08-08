@@ -19,6 +19,7 @@ export interface AssetItem {
   type: string;
   manualPrice: number | null;
   esgScores: { id: string; score: number; provider: string; date: string }[];
+  labels?: { id: string; label: string; source: string; asOfDate: string }[];
 }
 
 export interface UpdatePricePayload {

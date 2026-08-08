@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DashboardService, PortfolioCardData } from './dashboard.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
+import { EsgLabelService, SyncLabelsResult } from '../portfolio/esg-label.service';
 import { PortfolioCard } from '../../shared/components/portfolio-card/portfolio-card';
 
 type PageState = 'loading' | 'loaded' | 'empty' | 'error';
@@ -92,16 +93,71 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
           </div>
         }
 
-        <div data-testid="esg-filter-bar" class="esg-filter-bar" role="group" aria-label="Filtrer par score ESG">
-          @for (f of filters; track f.value) {
-            <button
-              [attr.data-testid]="'filter-' + f.value"
-              [attr.aria-pressed]="esgFilter() === f.value ? 'true' : 'false'"
-              [class.esg-filter-bar__btn--active]="esgFilter() === f.value"
-              class="esg-filter-bar__btn"
-              (click)="setFilter(f.value)"
-            >{{ f.label }}</button>
-          }
+        @if (labelSyncModalOpen()) {
+          <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="label-sync-modal-title">
+            <div data-testid="label-sync-modal" class="modal" [formGroup]="labelSyncForm">
+              <h2 id="label-sync-modal-title" class="modal__title">Synchroniser les labels ESG</h2>
+              <p class="modal__body">
+                Récupère le référentiel des fonds labellisés (ISR, Greenfin, Finansol) publié par la
+                Banque de France, et rattache les labels aux actifs dont le code ISIN correspond.
+                L'URL change chaque trimestre — vérifiez qu'elle est à jour sur le site de la Banque de France
+                avant de lancer la synchronisation.
+              </p>
+              <div class="modal-form-field">
+                <label for="label-sync-url" class="modal-form-label">URL du fichier .xlsx *</label>
+                <input
+                  id="label-sync-url"
+                  data-testid="label-sync-url-input"
+                  type="text"
+                  class="modal-form-input"
+                  formControlName="url"
+                  placeholder="https://www.banque-france.fr/system/files/.../referentiel_OPC_labelise_....xlsx"
+                />
+              </div>
+
+              @if (labelSyncResult(); as result) {
+                <p data-testid="label-sync-result" class="label-sync-result">
+                  {{ result.matched }} actif(s) labellisé(s) sur {{ result.totalRows }} ligne(s) traitée(s)
+                  ({{ result.unmatchedIsin }} ISIN non reconnu(s), {{ result.skippedLabels }} hors périmètre ISR/Greenfin/Finansol).
+                </p>
+              }
+              @if (labelSyncError()) {
+                <p data-testid="label-sync-error" class="modal__body" role="alert">{{ labelSyncError() }}</p>
+              }
+
+              <div class="modal__actions">
+                <button class="btn btn--ghost" (click)="closeLabelSyncModal()" [disabled]="labelSyncSubmitting()">Fermer</button>
+                <button
+                  data-testid="label-sync-submit-btn"
+                  class="btn btn--primary"
+                  (click)="confirmLabelSync()"
+                  [disabled]="labelSyncForm.invalid || labelSyncSubmitting()"
+                >
+                  @if (labelSyncSubmitting()) { Synchronisation… } @else { Lancer }
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <div class="dashboard-toolbar">
+          <div data-testid="esg-filter-bar" class="esg-filter-bar" role="group" aria-label="Filtrer par score ESG">
+            @for (f of filters; track f.value) {
+              <button
+                [attr.data-testid]="'filter-' + f.value"
+                [attr.aria-pressed]="esgFilter() === f.value ? 'true' : 'false'"
+                [class.esg-filter-bar__btn--active]="esgFilter() === f.value"
+                class="esg-filter-bar__btn"
+                (click)="setFilter(f.value)"
+              >{{ f.label }}</button>
+            }
+          </div>
+          <button
+            data-testid="open-label-sync-btn"
+            type="button"
+            class="btn btn--ghost"
+            (click)="openLabelSyncModal()"
+          >Synchroniser les labels ESG</button>
         </div>
         @if (filteredPortfolios().length === 0) {
           <p data-testid="filter-no-results" class="filter-no-results">
@@ -265,11 +321,33 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
     }
     textarea.modal-form-input { resize: vertical; min-height: 72px; }
 
+    .dashboard-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-3, 12px);
+      padding: var(--space-4, 16px) var(--space-4, 16px) 0;
+      flex-wrap: wrap;
+    }
+
+    .dashboard-toolbar .esg-filter-bar {
+      padding: 0;
+    }
+
     .esg-filter-bar {
       display: flex;
       gap: var(--space-2, 8px);
       padding: var(--space-4, 16px) var(--space-4, 16px) 0;
       flex-wrap: wrap;
+    }
+
+    .label-sync-result {
+      font-size: var(--text-sm, 0.875rem);
+      color: var(--color-neutral-700, #3A3A5A);
+      background: var(--color-neutral-100, #F8F9FA);
+      padding: var(--space-3, 12px);
+      border-radius: var(--radius-md, 8px);
+      margin: 0;
     }
     .esg-filter-bar__btn {
       padding: var(--space-1, 4px) var(--space-3, 12px);
@@ -317,6 +395,7 @@ type EsgFilter = 'all' | 'high' | 'medium' | 'low' | 'na';
 export class DashboardPage implements OnInit {
   private readonly dashboardService = inject(DashboardService);
   private readonly portfolioService = inject(PortfolioService);
+  private readonly esgLabelService = inject(EsgLabelService);
   private readonly router = inject(Router);
 
   state = signal<PageState>('loading');
@@ -336,6 +415,15 @@ export class DashboardPage implements OnInit {
   deleteSubmitting = signal(false);
   deleteTargetId = signal<string>('');
   deleteTargetName = signal<string>('');
+
+  labelSyncModalOpen  = signal(false);
+  labelSyncSubmitting = signal(false);
+  labelSyncResult     = signal<SyncLabelsResult | null>(null);
+  labelSyncError      = signal<string | null>(null);
+
+  labelSyncForm = new FormGroup({
+    url: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+  });
 
   filteredPortfolios = computed(() => {
     const filter = this.esgFilter();
@@ -418,6 +506,36 @@ export class DashboardPage implements OnInit {
       },
       error: () => {
         this.deleteSubmitting.set(false);
+      },
+    });
+  }
+
+  openLabelSyncModal() {
+    this.labelSyncForm.reset({ url: '' });
+    this.labelSyncResult.set(null);
+    this.labelSyncError.set(null);
+    this.labelSyncModalOpen.set(true);
+  }
+
+  closeLabelSyncModal() {
+    this.labelSyncModalOpen.set(false);
+  }
+
+  confirmLabelSync() {
+    if (this.labelSyncForm.invalid) return;
+
+    this.labelSyncSubmitting.set(true);
+    this.labelSyncResult.set(null);
+    this.labelSyncError.set(null);
+
+    this.esgLabelService.sync(this.labelSyncForm.controls['url'].value).subscribe({
+      next: (result) => {
+        this.labelSyncSubmitting.set(false);
+        this.labelSyncResult.set(result);
+      },
+      error: () => {
+        this.labelSyncSubmitting.set(false);
+        this.labelSyncError.set('La synchronisation a échoué. Vérifiez que l\'URL pointe vers le fichier .xlsx du référentiel.');
       },
     });
   }

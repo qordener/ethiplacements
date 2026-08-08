@@ -826,6 +826,7 @@ describe('PortfolioDetailPage', () => {
         ticker: 'BN',
         assetName: 'Danone',
         assetType: 'STOCK',
+        isin: '',
         quantity: 5,
         averagePrice: 150,
       });
@@ -855,6 +856,7 @@ describe('PortfolioDetailPage', () => {
         ticker: 'TSLA',
         assetName: 'Tesla',
         assetType: 'STOCK',
+        isin: '',
         quantity: 10,
         averagePrice: 200,
       });
@@ -868,6 +870,36 @@ describe('PortfolioDetailPage', () => {
       });
     });
 
+    it('should include the ISIN in the asset payload when provided', () => {
+      const newAsset = { id: 'a-new', name: 'Tesla', ticker: 'TSLA', type: 'STOCK', manualPrice: null, esgScores: [] };
+      mockAssetService.findAll.mockReturnValue(of([]));
+      mockAssetService.create.mockReturnValue(of(newAsset));
+      mockHoldingService.create.mockReturnValue(of({ id: 'h-new', portfolioId: 'cuid-1', assetId: 'a-new', quantity: 10, averagePrice: 200, asset: newAsset }));
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+
+      const btn = fixture.nativeElement.querySelector('[data-testid="add-holding-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      component.holdingForm.setValue({
+        ticker: 'TSLA',
+        assetName: 'Tesla',
+        assetType: 'STOCK',
+        isin: 'US88160R1014',
+        quantity: 10,
+        averagePrice: 200,
+      });
+
+      component.onSubmitHolding();
+
+      expect(mockAssetService.create).toHaveBeenCalledWith({
+        ticker: 'TSLA',
+        name: 'Tesla',
+        type: 'STOCK',
+        isin: 'US88160R1014',
+      });
+    });
+
     it('should reload portfolio data and close modal after successful submission', () => {
       const existingAsset = { id: 'a1', name: 'Danone', ticker: 'BN', type: 'STOCK', manualPrice: 155, esgScores: [] };
       mockAssetService.findAll.mockReturnValue(of([existingAsset]));
@@ -878,7 +910,7 @@ describe('PortfolioDetailPage', () => {
       btn.click();
       fixture.detectChanges();
 
-      component.holdingForm.setValue({ ticker: 'BN', assetName: 'Danone', assetType: 'STOCK', quantity: 5, averagePrice: 150 });
+      component.holdingForm.setValue({ ticker: 'BN', assetName: 'Danone', assetType: 'STOCK', isin: '', quantity: 5, averagePrice: 150 });
       component.onSubmitHolding();
       fixture.detectChanges();
 

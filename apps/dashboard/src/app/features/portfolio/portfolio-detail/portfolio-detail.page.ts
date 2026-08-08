@@ -22,13 +22,14 @@ import { DonutChart, DonutSegment } from '../../../shared/components/donut-chart
 import { BarChart, BarItem } from '../../../shared/components/bar-chart/bar-chart';
 import { LineChart, LinePoint } from '../../../shared/components/line-chart/line-chart';
 import { PeaCeilingGauge } from '../../../shared/components/pea-ceiling-gauge/pea-ceiling-gauge';
+import { EsgLabelBadge } from '../../../shared/components/esg-label-badge/esg-label-badge';
 
 type PageState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-portfolio-detail-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, DatePipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart, PeaCeilingGauge, ComparisonChart],
+  imports: [RouterLink, DecimalPipe, DatePipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart, PeaCeilingGauge, ComparisonChart, EsgLabelBadge],
   template: `
     <div class="portfolio-detail">
 
@@ -251,7 +252,10 @@ type PageState = 'loading' | 'loaded' | 'error';
                 <tbody>
                   @for (holding of data()!.portfolio.holdings; track holding.id) {
                     <tr data-testid="holding-row" class="holdings-table__row">
-                      <td class="holdings-table__ticker">{{ holding.asset.ticker }}</td>
+                      <td class="holdings-table__ticker">
+                        {{ holding.asset.ticker }}
+                        <epi-esg-label-badge [labels]="holding.asset.labels ?? []" />
+                      </td>
                       <td>{{ holding.asset.name }}</td>
                       <td>{{ holding.asset.type }}</td>
                       <td class="holdings-table__num">{{ holding.quantity }}</td>
@@ -600,6 +604,17 @@ type PageState = 'loading' | 'loaded' | 'error';
               <option [value]="type">{{ type }}</option>
             }
           </select>
+        </epi-form-field>
+
+        <epi-form-field label="Code ISIN (optionnel)" for="holding-isin">
+          <input
+            id="holding-isin"
+            data-testid="input-isin"
+            type="text"
+            class="form-input"
+            formControlName="isin"
+            placeholder="ex : FR0010315770"
+          />
         </epi-form-field>
 
         <epi-form-field
@@ -1230,6 +1245,7 @@ export class PortfolioDetailPage implements OnInit {
     ticker:       new FormControl('',   [Validators.required]),
     assetName:    new FormControl('',   [Validators.required]),
     assetType:    new FormControl<AssetType>('STOCK', [Validators.required]),
+    isin:         new FormControl(''),
     quantity:     new FormControl<number | null>(null, [Validators.required, Validators.min(0.0001)]),
     averagePrice: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
   });
@@ -1407,7 +1423,7 @@ export class PortfolioDetailPage implements OnInit {
   onSubmitHolding() {
     if (this.holdingForm.invalid) return;
 
-    const { ticker, assetName, assetType, quantity, averagePrice } = this.holdingForm.value;
+    const { ticker, assetName, assetType, isin, quantity, averagePrice } = this.holdingForm.value;
     // Guaranteed non-null: the required validators above (holdingForm.invalid check)
     // ensure every field has a value before this point — narrow the types once here
     // instead of asserting `!` at each use site below.
@@ -1435,7 +1451,7 @@ export class PortfolioDetailPage implements OnInit {
         });
     } else {
       this.assetService
-        .create({ ticker, name: assetName, type: assetType })
+        .create({ ticker, name: assetName, type: assetType, ...(isin ? { isin } : {}) })
         .pipe(
           switchMap((newAsset) =>
             this.holdingService.create(this.portfolioId, {
