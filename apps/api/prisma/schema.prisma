@@ -25,6 +25,12 @@ enum TransactionType {
   DIVIDEND
 }
 
+enum EsgLabelType {
+  ISR
+  GREENFIN
+  FINANSOL
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Portfolio {
@@ -49,6 +55,7 @@ model Asset {
   holdings         Holding[]
   esgScores        EsgScore[]
   priceSnapshots   PriceSnapshot[]
+  labels           AssetLabel[]
 }
 
 model PriceSnapshot {
@@ -100,6 +107,23 @@ model Deposit {
   notes       String?
   createdAt   DateTime  @default(now())
   portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+}
+
+// Label officiel (ISR/Greenfin/Finansol) obtenu par un fonds, tel que
+// consolidé par la Banque de France dans son référentiel trimestriel des
+// OPC labellisés. Distinct de EsgScore (score numérique, saisi manuellement
+// ou par fournisseur) : ceci est un fait vérifiable avec source et date,
+// pas une estimation.
+model AssetLabel {
+  id        String       @id @default(cuid())
+  assetId   String
+  label     EsgLabelType
+  source    String       @default("Banque de France")
+  asOfDate  DateTime
+  fetchedAt DateTime     @default(now())
+  asset     Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, label])
 }
 
 model EsgScore {

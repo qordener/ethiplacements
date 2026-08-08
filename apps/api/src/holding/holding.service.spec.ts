@@ -80,7 +80,7 @@ describe('HoldingService', () => {
 
       expect(mockPrisma.holding.findMany).toHaveBeenCalledWith({
         where: { portfolioId: 'p1' },
-        include: { asset: { include: { esgScores: true } } },
+        include: { asset: { include: { esgScores: true, labels: true } } },
       });
       expect(result).toHaveLength(2);
     });
@@ -113,7 +113,7 @@ describe('HoldingService', () => {
 
       expect(mockPrisma.holding.findUnique).toHaveBeenCalledWith({
         where: { id: 'h1' },
-        include: { asset: { include: { esgScores: true } }, transactions: { orderBy: { date: 'desc' } } },
+        include: { asset: { include: { esgScores: true, labels: true } }, transactions: { orderBy: { date: 'desc' } } },
       });
       expect(result).toEqual(holding);
     });

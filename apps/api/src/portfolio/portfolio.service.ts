@@ -55,7 +55,7 @@ export class PortfolioService {
   findOne(id: string) {
     return this.prisma.portfolio.findUnique({
       where: { id },
-      include: { holdings: { include: { asset: { include: { esgScores: true } } } } },
+      include: { holdings: { include: { asset: { include: { esgScores: true, labels: true } } } } },
     });
   }
 

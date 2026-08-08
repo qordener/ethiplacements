@@ -24,7 +24,7 @@ export class HoldingService {
   findAllByPortfolio(portfolioId: string) {
     return this.prisma.holding.findMany({
       where: { portfolioId },
-      include: { asset: { include: { esgScores: true } } },
+      include: { asset: { include: { esgScores: true, labels: true } } },
     });
   }
 
@@ -32,7 +32,7 @@ export class HoldingService {
     return this.prisma.holding.findUnique({
       where: { id },
       include: {
-        asset: { include: { esgScores: true } },
+        asset: { include: { esgScores: true, labels: true } },
         transactions: { orderBy: { date: 'desc' } },
       },
     });

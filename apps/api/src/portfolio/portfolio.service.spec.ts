@@ -106,7 +106,7 @@ describe('PortfolioService', () => {
 
       expect(mockPrisma.portfolio.findUnique).toHaveBeenCalledWith({
         where: { id: 'cuid1' },
-        include: { holdings: { include: { asset: { include: { esgScores: true } } } } },
+        include: { holdings: { include: { asset: { include: { esgScores: true, labels: true } } } } },
       });
       expect(result).toEqual(portfolio);
     });
