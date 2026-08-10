@@ -11,6 +11,7 @@ import { TransactionModule } from '../transaction/transaction.module';
 import { PriceModule } from '../price/price.module';
 import { DepositModule } from '../deposit/deposit.module';
 import { EsgLabelModule } from '../esg-label/esg-label.module';
+import { BankImportModule } from '../bank-import/bank-import.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EsgLabelModule } from '../esg-label/esg-label.module';
     PriceModule,
     DepositModule,
     EsgLabelModule,
+    BankImportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

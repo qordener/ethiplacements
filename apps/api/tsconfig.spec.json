@@ -4,7 +4,7 @@
     "outDir": "../../dist/out-tsc",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "types": ["node", "vitest/globals"],
+    "types": ["node", "vitest/globals", "multer"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "target": "es2021"
