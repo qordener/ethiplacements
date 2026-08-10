@@ -13,6 +13,7 @@ import { AssetService, AssetItem, AssetType, UpdatePricePayload } from '../asset
 import { EsgScoreService } from '../esg-score.service';
 import { PortfolioService } from '../portfolio.service';
 import { DepositService, Deposit, PeaCeiling } from '../deposit.service';
+import { BankImportModal } from '../../../shared/components/bank-import-modal/bank-import-modal';
 import { CsvExportService } from '../../../shared/services/csv-export.service';
 import { MetricCard } from '../../../shared/components/metric-card/metric-card';
 import { ScoreBadge } from '../../../shared/components/score-badge/score-badge';
@@ -29,7 +30,7 @@ type PageState = 'loading' | 'loaded' | 'error';
 @Component({
   selector: 'app-portfolio-detail-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, DatePipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart, PeaCeilingGauge, ComparisonChart, EsgLabelBadge],
+  imports: [RouterLink, DecimalPipe, DatePipe, ReactiveFormsModule, MetricCard, ScoreBadge, Modal, FormField, DonutChart, BarChart, LineChart, PeaCeilingGauge, ComparisonChart, EsgLabelBadge, BankImportModal],
   template: `
     <div class="portfolio-detail">
 
@@ -223,6 +224,12 @@ type PageState = 'loading' | 'loaded' | 'error';
                     (click)="exportCsv()"
                   >↓ CSV</button>
                 }
+                <button
+                  data-testid="open-bank-import-btn"
+                  type="button"
+                  class="btn btn--secondary"
+                  (click)="bankImportModal.open()"
+                >Importer un relevé OFX</button>
                 <button
                   data-testid="add-holding-btn"
                   type="button"
@@ -752,6 +759,12 @@ type PageState = 'loading' | 'loaded' | 'error';
         </button>
       </div>
     </epi-modal>
+
+    <epi-bank-import-modal
+      #bankImportModal
+      [portfolioId]="portfolioId"
+      (imported)="onBankImportCompleted()"
+    />
   `,
   styles: [`
     .portfolio-detail {
@@ -1382,7 +1395,7 @@ export class PortfolioDetailPage implements OnInit {
   quantityError  = signal<string | null>(null);
   priceError     = signal<string | null>(null);
 
-  private portfolioId = '';
+  portfolioId = '';
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -1604,6 +1617,10 @@ export class PortfolioDetailPage implements OnInit {
     this.historyRange.set(range);
     this.loadHistory();
     this.loadComparison();
+  }
+
+  onBankImportCompleted() {
+    this.loadData();
   }
 
   private loadData() {

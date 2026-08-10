@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { of, throwError, Subject } from 'rxjs';
 import { provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
@@ -11,6 +12,7 @@ import { AssetService } from '../asset.service';
 import { EsgScoreService } from '../esg-score.service';
 import { PortfolioService } from '../portfolio.service';
 import { DepositService } from '../deposit.service';
+import { BankImportService } from '../bank-import.service';
 import { CsvExportService } from '../../../shared/services/csv-export.service';
 
 const DEFAULT_CEILING = { totalDeposited: 0, ceiling: 150_000, remaining: 150_000, percentage: 0 };
@@ -76,6 +78,7 @@ describe('PortfolioDetailPage', () => {
     getCeiling: ReturnType<typeof vi.fn>;
   };
   let mockCsvExportService: { download: ReturnType<typeof vi.fn> };
+  let mockBankImportService: { importOfx: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = {
@@ -94,6 +97,7 @@ describe('PortfolioDetailPage', () => {
       getCeiling: vi.fn().mockReturnValue(of(DEFAULT_CEILING)),
     };
     mockCsvExportService = { download: vi.fn() };
+    mockBankImportService = { importOfx: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [PortfolioDetailPage],
@@ -105,6 +109,7 @@ describe('PortfolioDetailPage', () => {
         { provide: EsgScoreService, useValue: mockEsgScoreService },
         { provide: PortfolioService, useValue: mockPortfolioService },
         { provide: DepositService, useValue: mockDepositService },
+        { provide: BankImportService, useValue: mockBankImportService },
         { provide: CsvExportService, useValue: mockCsvExportService },
         {
           provide: ActivatedRoute,
@@ -1196,6 +1201,40 @@ describe('PortfolioDetailPage', () => {
         expect(mockDepositService.findAllByPortfolio).toHaveBeenCalledTimes(2);
         expect(mockDepositService.getCeiling).toHaveBeenCalledTimes(2);
       });
+    });
+  });
+
+  // ─── Import OFX ───────────────────────────────────────────────────────────
+  // Le détail du flux (preview/confirm, statuts par ligne) est testé dans
+  // bank-import-modal.spec.ts — ici on ne vérifie que le câblage parent/enfant.
+
+  describe('import OFX (câblage)', () => {
+    beforeEach(() => {
+      mockService.getPortfolioDetail.mockReturnValue(of(MOCK_DETAIL));
+      fixture.detectChanges();
+    });
+
+    it('should render the bank import modal component with the portfolio id', () => {
+      const modal = fixture.nativeElement.querySelector('epi-bank-import-modal');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should open the modal via the trigger button', () => {
+      const btn = fixture.nativeElement.querySelector('[data-testid="open-bank-import-btn"]');
+      btn.click();
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]');
+      expect(modal).toBeTruthy();
+    });
+
+    it('should reload the portfolio when the modal emits "imported"', () => {
+      mockService.getPortfolioDetail.mockClear();
+      const modalDebugEl = fixture.debugElement.query(By.css('epi-bank-import-modal'));
+
+      modalDebugEl.componentInstance.imported.emit();
+
+      expect(mockService.getPortfolioDetail).toHaveBeenCalled();
     });
   });
 });
