@@ -21,13 +21,20 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # Suit .nvmrc : la CI teste la version de référence du projet.
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - run: npm ci
 
       - name: Generate Prisma client
         run: npx nx run api:prisma-generate
+
+      # Rejoue l'installation telle que décrite par le README, depuis un état
+      # vierge : c'est ce qui manquait pour détecter que la commande échouait
+      # faute de DATABASE_URL.
+      - name: Verify a fresh clone can create its database
+        run: npx nx run api:prisma-migrate
 
       - name: Lint
         run: npx nx run-many -t lint --projects=api,dashboard

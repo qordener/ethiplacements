@@ -9,6 +9,12 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Défaut aligné sur le chemin que PrismaService code en dur au runtime.
+    // Sans lui, `prisma migrate dev` échoue sur un clone neuf ("datasource.url
+    // is required") alors que le README présente cette commande comme la
+    // première étape d'installation. DATABASE_URL reste prioritaire pour qui
+    // veut pointer ailleurs.
+    // Chemin relatif à apps/api : les cibles Nx prisma-* s'y exécutent (cwd).
+    url: process.env["DATABASE_URL"] ?? "file:./data/ethiplacements.db",
   },
 });
