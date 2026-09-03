@@ -32,7 +32,9 @@ apps/
 
 ## Prérequis
 
-- [Node.js](https://nodejs.org) >= 20
+- [Node.js](https://nodejs.org) — versions acceptées par Angular 21 :
+  `^20.19.0 || ^22.12.0 || >=24.0.0`. La version de référence du projet est
+  épinglée dans `.nvmrc` : `nvm use` suffit.
 - npm >= 10
 
 ## Installation
