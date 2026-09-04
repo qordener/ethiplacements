@@ -9,7 +9,7 @@ Charge et affiche le contexte complet du projet ethiplacements pour initialiser 
 Présente de façon structurée :
 
 ### Stack & Architecture
-- **Monorepo** : NX — `apps/api` (NestJS), `apps/dashboard` (Angular 21), `apps/api-e2e`, `apps/dashboard-e2e` (Playwright)
+- **Monorepo** : NX — `apps/api` (NestJS), `apps/dashboard` (Angular 21), `apps/dashboard-e2e` (Playwright)
 - **Base de données** : SQLite via Prisma ORM (LibSQL adapter) — local-first, fichier `apps/api/data/ethiplacements.db`
 - **Build** : Webpack (api), Angular CLI (dashboard)
 - **Package manager** : npm

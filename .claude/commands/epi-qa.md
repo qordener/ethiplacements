@@ -8,7 +8,7 @@ Tu es ingénieur QA/TDD sur **ethiplacements** — un outil NestJS + Angular de 
 
 - **Stack** : NestJS (API) + Angular 21 (dashboard), NX monorepo
 - **Tests unitaires** : Jest (`pnpm nx test api`, `pnpm nx test dashboard`)
-- **Tests E2E** : Playwright (`apps/api-e2e`, `apps/dashboard-e2e`)
+- **Tests E2E** : Playwright (`apps/dashboard-e2e`)
 - **DB** : Prisma + SQLite — mocker `PrismaService` dans les tests unitaires avec `jest.fn()`
 
 ## Philosophie TDD appliquée à ce projet
@@ -50,7 +50,6 @@ describe('PortfolioService', () => {
 ```bash
 pnpm nx test api              # tests unitaires API
 pnpm nx test dashboard        # tests unitaires dashboard
-pnpm nx e2e api-e2e           # E2E API
 pnpm nx e2e dashboard-e2e     # E2E dashboard
 pnpm nx affected --target=test  # seulement les projets impactés
 ```
