@@ -22,7 +22,6 @@ Un dividende faible ou nul ne signifie pas qu'une entreprise n'est pas rentable 
 apps/
   api/           NestJS — API REST locale (port 3000)
   dashboard/     Angular 21 — Interface utilisateur
-  api-e2e/       Tests E2E Playwright (API)
   dashboard-e2e/ Tests E2E Playwright (dashboard)
 ```
 
