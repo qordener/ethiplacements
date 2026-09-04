@@ -44,3 +44,22 @@ jobs:
 
       - name: Build
         run: npx nx run-many -t build --projects=api,dashboard
+
+      # dashboard-e2e mocke toutes les routes API (page.route) : aucune base ni
+      # serveur NestJS n'est requis, seulement le serveur de dev Angular. C'est
+      # Nx qui le démarre, via le `dependsOn: dashboard:serve` inféré par le
+      # plugin Playwright ; le `reuseExistingServer` de la config sert alors à
+      # ce que Playwright s'y raccorde au lieu d'en lancer un second.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E dashboard
+        run: npx nx e2e dashboard-e2e
+
+      - name: Publier le rapport Playwright en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report
+          path: dist/.playwright
+          retention-days: 7
