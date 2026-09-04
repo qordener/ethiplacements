@@ -28,7 +28,38 @@ async function mockDashboardWithPortfolios(page: import('@playwright/test').Page
   );
 }
 
+// Ces quatre routes ont été ajoutées à la page détail après l'écriture de ce
+// spec (historique, comparateur, dépôts, plafond PEA) sans que les mocks ne
+// suivent. Elles traversaient donc le proxy de dev vers une API absente : les
+// échecs `ECONNREFUSED` retombaient à un instant variable et rendaient les
+// assertions de la page intermittentes. Les regex tolèrent la query string
+// `?range=` que portent history et comparison.
+async function mockDetailAuxRoutes(page: import('@playwright/test').Page) {
+  await page.route(/\/api\/portfolios\/p1\/history/, route =>
+    route.fulfill({ json: [] })
+  );
+  await page.route(/\/api\/portfolios\/p1\/comparison/, route =>
+    route.fulfill({
+      json: { portfolio: [], benchmarks: { cac40: [], msciWorldSri: [] } },
+    })
+  );
+  await page.route(/\/api\/portfolios\/p1\/deposits/, route =>
+    route.fulfill({ json: [] })
+  );
+  await page.route(/\/api\/portfolios\/p1\/pea-ceiling/, route =>
+    route.fulfill({
+      json: {
+        totalDeposited: 0,
+        ceiling: 150_000,
+        remaining: 150_000,
+        percentage: 0,
+      },
+    })
+  );
+}
+
 async function mockDetailEmpty(page: import('@playwright/test').Page) {
+  await mockDetailAuxRoutes(page);
   await page.route('/api/portfolios/p1', route =>
     route.fulfill({ json: DETAIL_P1_EMPTY })
   );
@@ -38,6 +69,7 @@ async function mockDetailEmpty(page: import('@playwright/test').Page) {
 }
 
 async function mockDetailWithHolding(page: import('@playwright/test').Page) {
+  await mockDetailAuxRoutes(page);
   await page.route('/api/portfolios/p1', route =>
     route.fulfill({ json: DETAIL_P1_WITH_HOLDING })
   );

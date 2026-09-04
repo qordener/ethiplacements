@@ -28,6 +28,11 @@ export default defineConfig({
     url: 'http://localhost:4200',
     reuseExistingServer: true,
     cwd: workspaceRoot,
+    // Marge sur le défaut de 60 s pour le démarrage à froid du serveur de dev
+    // sur un runner CI, plus lent qu'en local. Précision utile : ce n'est pas
+    // ce réglage qui a réglé l'instabilité de la suite — elle venait de routes
+    // non mockées (voir le commentaire de `mockDetailAuxRoutes` dans le spec).
+    timeout: 120_000,
   },
   projects: [
     {
