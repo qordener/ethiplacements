@@ -8,7 +8,13 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 export class TransactionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(holdingId: string, dto: CreateTransactionDto) {
+  /**
+   * `fitId` porte l'identifiant bancaire d'origine pour les lignes importées
+   * depuis un relevé OFX. Il reste undefined pour une saisie manuelle, ce qui
+   * laisse la contrainte d'unicité inopérante sur ces lignes (NULL distincts
+   * en SQLite) — seul l'import est rendu idempotent.
+   */
+  async create(holdingId: string, dto: CreateTransactionDto, fitId?: string) {
     const holding = await this.prisma.holding.findUnique({ where: { id: holdingId } });
     if (!holding) throw new NotFoundException(`Holding ${holdingId} introuvable`);
 
@@ -20,7 +26,7 @@ export class TransactionService {
         : dto.price;
 
       const transaction = await this.prisma.transaction.create({
-        data: { holdingId, ...dto, date: new Date(dto.date) },
+        data: { holdingId, ...dto, fitId, date: new Date(dto.date) },
       });
 
       await this.prisma.holding.update({
@@ -39,7 +45,7 @@ export class TransactionService {
       }
 
       const transaction = await this.prisma.transaction.create({
-        data: { holdingId, ...dto, date: new Date(dto.date) },
+        data: { holdingId, ...dto, fitId, date: new Date(dto.date) },
       });
 
       // PRU invariant après SELL, seule la quantité diminue
@@ -53,7 +59,7 @@ export class TransactionService {
 
     // DIVIDEND : crée la transaction sans modifier le holding
     return this.prisma.transaction.create({
-      data: { holdingId, ...dto, date: new Date(dto.date) },
+      data: { holdingId, ...dto, fitId, date: new Date(dto.date) },
     });
   }
 

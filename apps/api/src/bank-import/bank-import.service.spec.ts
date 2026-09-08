@@ -62,7 +62,8 @@ function ofxWith(opts: {
 const mockPrisma = {
   portfolio: { findUnique: vi.fn() },
   holding: { findMany: vi.fn() },
-  deposit: { create: vi.fn() },
+  deposit: { create: vi.fn(), findMany: vi.fn() },
+  transaction: { findMany: vi.fn() },
 };
 
 const mockTransactionService = { create: vi.fn() };
@@ -85,6 +86,9 @@ describe('BankImportService', () => {
     mockPrisma.holding.findMany.mockResolvedValue([
       { id: 'h1', portfolioId: 'p1', assetId: 'a1', quantity: 20, averagePrice: 300, asset: { id: 'a1', ticker: 'CW8', isin: 'FR0010315770' } },
     ]);
+    // Par défaut, aucun FITID n'a encore été importé pour ce portefeuille.
+    mockPrisma.transaction.findMany.mockResolvedValue([]);
+    mockPrisma.deposit.findMany.mockResolvedValue([]);
   });
 
   it('should throw NotFoundException when the portfolio does not exist', async () => {
@@ -143,9 +147,13 @@ describe('BankImportService', () => {
 
       const result = await service.importOfx('p1', ofxWith({ buy: true }), true);
 
-      expect(mockTransactionService.create).toHaveBeenCalledWith('h1', {
-        type: 'BUY', quantity: 10, price: 350, date: '2026-01-15',
-      });
+      // Le FITID du relevé est transmis et persisté : c'est lui qui rend
+      // l'import idempotent.
+      expect(mockTransactionService.create).toHaveBeenCalledWith(
+        'h1',
+        { type: 'BUY', quantity: 10, price: 350, date: '2026-01-15' },
+        'B1',
+      );
       expect(result.transactions[0].imported).toBe(true);
     });
 
@@ -165,13 +173,40 @@ describe('BankImportService', () => {
       expect(result.transactions[0].error).toMatch(/supérieure/);
     });
 
+    it('should not re-import a transaction whose FITID is already in the database', async () => {
+      // Idempotence : le relevé a déjà été importé une première fois.
+      mockPrisma.transaction.findMany.mockResolvedValue([{ fitId: 'B1' }]);
+
+      const result = await service.importOfx('p1', ofxWith({ buy: true }), true);
+
+      expect(mockTransactionService.create).not.toHaveBeenCalled();
+      expect(result.transactions[0].imported).toBe(false);
+      expect(result.transactions[0].skippedReason).toMatch(/Déjà importé/);
+    });
+
+    it('should not re-import a deposit whose FITID is already in the database', async () => {
+      mockPrisma.deposit.findMany.mockResolvedValue([{ fitId: 'C1' }]);
+
+      const result = await service.importOfx('p1', ofxWith({ deposit: true }), true);
+
+      expect(mockPrisma.deposit.create).not.toHaveBeenCalled();
+      expect(result.deposits[0].imported).toBe(false);
+      expect(result.deposits[0].skippedReason).toMatch(/Déjà importé/);
+    });
+
     it('should create deposits via PrismaService for positive cash movements', async () => {
       mockPrisma.deposit.create.mockResolvedValue({ id: 'd1' });
 
       const result = await service.importOfx('p1', ofxWith({ deposit: true }), true);
 
       expect(mockPrisma.deposit.create).toHaveBeenCalledWith({
-        data: { portfolioId: 'p1', amount: 1000, date: new Date('2026-01-10'), notes: 'Versement' },
+        data: {
+          portfolioId: 'p1',
+          amount: 1000,
+          date: new Date('2026-01-10'),
+          notes: 'Versement',
+          fitId: 'C1',
+        },
       });
       expect(result.deposits[0].imported).toBe(true);
     });

@@ -91,8 +91,16 @@ model Transaction {
   price     Float
   date      DateTime
   notes     String?
+  // Identifiant unique attribué par la banque (OFX FITID). Renseigné pour les
+  // seules lignes issues d'un import ; null pour une saisie manuelle. La
+  // contrainte d'unicité rend l'import idempotent : réimporter le même relevé
+  // ne peut plus dupliquer quantités et PRU. SQLite considère les NULL comme
+  // distincts, les saisies manuelles ne se gênent donc pas entre elles.
+  fitId     String?
   createdAt DateTime        @default(now())
   holding   Holding         @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+
+  @@unique([holdingId, fitId])
 }
 
 // Versement de liquidités dans l'enveloppe du portefeuille (ex : PEA).
@@ -105,8 +113,13 @@ model Deposit {
   amount      Float
   date        DateTime
   notes       String?
+  // Voir Transaction.fitId : même rôle d'idempotence. Un versement dupliqué
+  // fausserait directement le calcul du plafond PEA.
+  fitId       String?
   createdAt   DateTime  @default(now())
   portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, fitId])
 }
 
 // Label officiel (ISR/Greenfin/Finansol) obtenu par un fonds, tel que
