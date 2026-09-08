@@ -11,6 +11,7 @@ const mockPrisma = {
 
 const mockFetcher = {
   fetchPrices: vi.fn(),
+  resolveSymbolFromIsin: vi.fn(),
 };
 
 describe('PriceSchedulerService', () => {
@@ -87,6 +88,67 @@ describe('PriceSchedulerService', () => {
       expect(mockPrisma.priceSnapshot.createMany).toHaveBeenCalledWith({
         data: [{ assetId: 'a1', price: 155.5, currency: 'EUR', source: 'yahoo' }],
       });
+    });
+
+    it('should reject a price quoted in a foreign currency', async () => {
+      // Toute l'app additionne des euros sans conversion : un prix en dollars
+      // gonflerait la valorisation d'un facteur silencieux.
+      mockPrisma.asset.findMany.mockResolvedValue([{ id: 'a1', ticker: 'SU', isin: null }]);
+      mockFetcher.fetchPrices.mockResolvedValue([
+        { ticker: 'SU', price: 68.83, currency: 'USD' },
+      ]);
+
+      await service.refreshPrices();
+
+      expect(mockPrisma.priceSnapshot.createMany).not.toHaveBeenCalled();
+    });
+
+    it('should skip an asset whose ticker contradicts its ISIN', async () => {
+      // « SU » est Schneider Electric à Paris mais Suncor Energy chez Yahoo.
+      // L'ISIN fait autorité : en cas de désaccord on s'abstient.
+      mockPrisma.asset.findMany.mockResolvedValue([
+        { id: 'a1', ticker: 'SU', isin: 'FR0000121972' },
+      ]);
+      mockFetcher.resolveSymbolFromIsin.mockResolvedValue('SU.PA');
+
+      await service.refreshPrices();
+
+      expect(mockFetcher.fetchPrices).not.toHaveBeenCalled();
+      expect(mockPrisma.priceSnapshot.createMany).not.toHaveBeenCalled();
+    });
+
+    it('should fetch an asset whose ticker matches its ISIN', async () => {
+      mockPrisma.asset.findMany.mockResolvedValue([
+        { id: 'a1', ticker: 'SU.PA', isin: 'FR0000121972' },
+      ]);
+      mockFetcher.resolveSymbolFromIsin.mockResolvedValue('SU.PA');
+      mockFetcher.fetchPrices.mockResolvedValue([
+        { ticker: 'SU.PA', price: 210.5, currency: 'EUR' },
+      ]);
+      mockPrisma.priceSnapshot.createMany.mockResolvedValue({ count: 1 });
+
+      await service.refreshPrices();
+
+      expect(mockPrisma.priceSnapshot.createMany).toHaveBeenCalledWith({
+        data: [{ assetId: 'a1', price: 210.5, currency: 'EUR', source: 'yahoo' }],
+      });
+    });
+
+    it('should fall back to the stored ticker when the ISIN cannot be resolved', async () => {
+      // ISIN non résolu : on ne sait pas trancher. Le contrôle de devise
+      // reste le dernier garde-fou.
+      mockPrisma.asset.findMany.mockResolvedValue([
+        { id: 'a1', ticker: 'BN.PA', isin: 'FR0000120644' },
+      ]);
+      mockFetcher.resolveSymbolFromIsin.mockResolvedValue(null);
+      mockFetcher.fetchPrices.mockResolvedValue([
+        { ticker: 'BN.PA', price: 155.5, currency: 'EUR' },
+      ]);
+      mockPrisma.priceSnapshot.createMany.mockResolvedValue({ count: 1 });
+
+      await service.refreshPrices();
+
+      expect(mockFetcher.fetchPrices).toHaveBeenCalledWith(['BN.PA']);
     });
 
     it('should not call createMany when fetcher returns nothing', async () => {
