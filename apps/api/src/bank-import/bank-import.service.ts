@@ -21,6 +21,7 @@ export interface PreviewDepositRow {
   date: string;
   amount: number;
   label: string;
+  skippedReason: string | null;
 }
 
 export interface ImportedTransactionRow extends PreviewTransactionRow {
@@ -60,6 +61,27 @@ export class BankImportService {
       where: { portfolioId },
       include: { asset: true },
     });
+    // Idempotence de l'import : un FITID déjà présent en base a déjà été
+    // importé. Sans cette vérification, réimporter le même relevé dupliquait
+    // quantités, PRU et versements — et faussait donc le plafond PEA.
+    const knownTxFitIds = new Set(
+      (
+        await this.prisma.transaction.findMany({
+          where: { fitId: { not: null }, holding: { portfolioId } },
+          select: { fitId: true },
+        })
+      ).map((t) => t.fitId as string)
+    );
+    const knownDepositFitIds = new Set(
+      (
+        await this.prisma.deposit.findMany({
+          where: { fitId: { not: null }, portfolioId },
+          select: { fitId: true },
+        })
+      ).map((d) => d.fitId as string)
+    );
+    const ALREADY_IMPORTED = 'Déjà importé lors d\'un précédent import de ce relevé';
+
     const holdingByIsin = new Map(holdings.filter((h) => h.asset.isin).map((h) => [h.asset.isin as string, h]));
     const holdingByTicker = new Map(holdings.map((h) => [h.asset.ticker.toUpperCase(), h]));
     const securityById = new Map(parsed.securities.map((s) => [s.uniqueId, s]));
@@ -95,7 +117,11 @@ export class BankImportService {
         amount: t.total,
         ...securityLabel(t.securityUniqueId, sec),
         holdingId: holding?.id ?? null,
-        skippedReason: holding ? null : 'Actif non reconnu dans ce portefeuille (ISIN/ticker non matché)',
+        skippedReason: knownTxFitIds.has(t.fitId)
+          ? ALREADY_IMPORTED
+          : holding
+            ? null
+            : 'Actif non reconnu dans ce portefeuille (ISIN/ticker non matché)',
       });
     }
 
@@ -106,7 +132,9 @@ export class BankImportService {
       let price: number | null = null;
       let skippedReason: string | null = null;
 
-      if (!holding) {
+      if (knownTxFitIds.has(t.fitId)) {
+        skippedReason = ALREADY_IMPORTED;
+      } else if (!holding) {
         skippedReason = 'Actif non reconnu dans ce portefeuille (ISIN/ticker non matché)';
       } else if (holding.quantity <= 0) {
         skippedReason = 'Aucune position détenue actuellement pour répartir ce dividende';
@@ -134,47 +162,66 @@ export class BankImportService {
 
     const depositRows: PreviewDepositRow[] = parsed.cashTransactions
       .filter((c) => c.amount > 0)
-      .map((c) => ({ fitId: c.fitId, date: c.date, amount: c.amount, label: c.name }));
+      .map((c) => ({
+        fitId: c.fitId,
+        date: c.date,
+        amount: c.amount,
+        label: c.name,
+        skippedReason: knownDepositFitIds.has(c.fitId) ? ALREADY_IMPORTED : null,
+      }));
 
-    const importedTransactions: ImportedTransactionRow[] = [];
     // Ordre chronologique : un SELL importé avant son BUY correspondant
-    // échouerait la validation de quantité disponible.
-    const sortedRows = [...transactionRows].sort((a, b) => a.date.localeCompare(b.date));
+    // échouerait la validation de quantité disponible. On trie les index
+    // plutôt que les lignes, et on range chaque résultat à sa position
+    // d'origine : un remappage par fitId écraserait deux lignes partageant le
+    // même identifiant (relevé mal formé, ou FITID absent), et le rapport
+    // rendu à l'utilisateur afficherait alors deux fois la même ligne.
+    const orderedTransactions: ImportedTransactionRow[] = new Array(transactionRows.length);
+    const chronologicalIndexes = transactionRows
+      .map((row, index) => ({ row, index }))
+      .sort((a, b) => a.row.date.localeCompare(b.row.date));
 
-    for (const row of sortedRows) {
+    for (const { row, index } of chronologicalIndexes) {
       if (!confirm || !row.holdingId || row.skippedReason) {
-        importedTransactions.push({ ...row, imported: false, error: null });
+        orderedTransactions[index] = { ...row, imported: false, error: null };
         continue;
       }
       try {
-        await this.transactionService.create(row.holdingId, {
-          type: row.kind,
-          quantity: row.quantity as number,
-          price: row.price as number,
-          date: row.date,
-        });
-        importedTransactions.push({ ...row, imported: true, error: null });
+        await this.transactionService.create(
+          row.holdingId,
+          {
+            type: row.kind,
+            quantity: row.quantity as number,
+            price: row.price as number,
+            date: row.date,
+          },
+          row.fitId
+        );
+        orderedTransactions[index] = { ...row, imported: true, error: null };
       } catch (e: unknown) {
-        importedTransactions.push({
+        orderedTransactions[index] = {
           ...row,
           imported: false,
           error: e instanceof Error ? e.message : "Échec de l'import",
-        });
+        };
       }
     }
-    // Restaure l'ordre d'origine (BUY/SELL puis DIVIDEND) pour l'affichage.
-    const importedByFitId = new Map(importedTransactions.map((r) => [r.fitId, r]));
-    const orderedTransactions = transactionRows.map((r) => importedByFitId.get(r.fitId) as ImportedTransactionRow);
 
     const importedDeposits: ImportedDepositRow[] = [];
     for (const row of depositRows) {
-      if (!confirm) {
+      if (!confirm || row.skippedReason) {
         importedDeposits.push({ ...row, imported: false, error: null });
         continue;
       }
       try {
         await this.prisma.deposit.create({
-          data: { portfolioId, amount: row.amount, date: new Date(row.date), notes: row.label },
+          data: {
+            portfolioId,
+            amount: row.amount,
+            date: new Date(row.date),
+            notes: row.label,
+            fitId: row.fitId,
+          },
         });
         importedDeposits.push({ ...row, imported: true, error: null });
       } catch (e: unknown) {
