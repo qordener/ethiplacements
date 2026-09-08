@@ -30,7 +30,16 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  // Écoute restreinte à la boucle locale. L'API n'a délibérément aucune
+  // authentification (outil local-first mono-utilisateur), ce qui n'est
+  // défendable que si elle reste injoignable depuis le réseau. Sans cet hôte,
+  // `listen` se lie à 0.0.0.0 : n'importe qui sur le même wifi peut alors lire
+  // et modifier les portefeuilles, et le DPIA du 08/08 — qui fonde tout son
+  // raisonnement sur le caractère strictement local du traitement — ne tient
+  // plus. HOST reste surchargeable pour un déploiement conteneurisé, où
+  // l'isolation réseau est assurée par ailleurs.
+  const host = process.env.HOST || '127.0.0.1';
+  await app.listen(port, host);
   Logger.log(
     `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`,
   );
