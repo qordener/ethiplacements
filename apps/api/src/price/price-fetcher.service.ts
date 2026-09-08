@@ -54,6 +54,40 @@ export class PriceFetcherService {
   }
 
   /**
+   * Résout le symbole Yahoo correspondant à un ISIN.
+   *
+   * Sert à vérifier que le ticker saisi désigne bien le titre attendu : les
+   * tickers Euronext sont courts et entrent en collision avec des valeurs
+   * américaines homonymes. « SU » est le ticker de Schneider Electric à Paris,
+   * mais désigne Suncor Energy chez Yahoo (NYSE, en dollars) ; « ORA » est
+   * Orange à Paris et Ormat Technologies chez Yahoo. Sans ce contrôle, le prix
+   * d'une tout autre société entre silencieusement dans la valorisation.
+   *
+   * Retourne null si l'ISIN est introuvable ou l'API injoignable — l'appelant
+   * doit alors s'abstenir plutôt que de deviner.
+   */
+  async resolveSymbolFromIsin(isin: string): Promise<string | null> {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(isin)}`;
+
+    try {
+      const response = await axios.get(url, {
+        timeout: 8000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Accept': 'application/json',
+        },
+      });
+
+      const symbol: unknown = response.data?.quotes?.[0]?.symbol;
+      return typeof symbol === 'string' && symbol.length > 0 ? symbol : null;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Impossible de résoudre l'ISIN ${isin}: ${message}`);
+      return null;
+    }
+  }
+
+  /**
    * Fetches the daily closing price history for a single ticker over the
    * given range. Used for benchmarks (indices/ETFs), which — unlike our own
    * holdings — have deep public history directly available from Yahoo,
